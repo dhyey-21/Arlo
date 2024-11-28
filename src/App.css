@@ -1,38 +1,192 @@
-.App {
-  text-align: center;
+/* Global Styles */
+body {
+  font-family: 'Poppins', sans-serif;
+  background: linear-gradient(135deg, #14151a, #1f2025); /* Dark gradient background */
+  margin: 0;
+  padding: 0;
+  color: #ffffff;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+/* Container for the app */
+.app-container {
   display: flex;
   flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Header styling */
+.header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 15px;
+  background: linear-gradient(90deg, #1c1e26, #242731); /* Dark blue-gray header */
+  position: relative;
+}
+
+.logo-text {
+  font-size: 28px;
+  font-weight: bold;
+  color: #00ffd2; /* Vibrant aqua color for logo text */
+}
+
+.connect-button {
+  position: absolute;
+  right: 20px;
+  background-color: #00ffd2;
+  color: #14151a;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 25px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.connect-button:hover {
+  background-color: #00d9b6; /* Slightly darker on hover */
+  transform: scale(1.05);
+}
+
+/* Main content layout */
+.main-content {
+  display: flex;
+  flex-grow: 1;
+  padding: 20px;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Chat section styling */
+.chat-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: #1a1b23; /* Dark background for chat section */
+  border-radius: 15px;
+  padding: 20px;
+  margin-right: 20px;
+  height: calc(100vh - 200px);
+  overflow: hidden;
+}
+
+.chat-content {
+  flex-grow: 1;
+  padding: 10px;
+  overflow-y: auto;
+  border-radius: 10px;
+  background-color: #23242a; /* Darker gray for chat background */
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Chat message styles */
+.chat-message {
+  padding: 12px 15px;
+  border-radius: 20px;
+  color: #ffffff;
+  max-width: 70%;
+  position: relative;
+  word-wrap: break-word;
+  transition: background-color 0.3s ease;
+}
+
+/* Styling for user's messages (right side) */
+.chat-message.user {
+  align-self: flex-end;
+  background: linear-gradient(45deg, #A8E6CF, #DCEDC1); /* Soft green gradient for user messages */
+  color: #2E4A3B; /* Dark green text color */
+  border-top-right-radius: 0; /* Make one corner flat */
+  margin-right: 5px;
+  text-align: right;
+}
+
+/* Styling for assistant's messages (left side) */
+.chat-message.assistant {
+  align-self: flex-start;
+  background-color: #6C63FF; /* Subtle purple color for Lexi's responses */
+  color: #ffffff; /* White text for readability */
+  border-top-left-radius: 0; /* Make one corner flat */
+  margin-left: 5px;
+}
+
+/* Chat input section */
+.chat-input-container {
+  display: flex;
+  align-items: center;
+  padding: 10px 20px;
+  background-color: #242731;
+  border-radius: 25px;
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: calc(100% - 40px);
+  max-width: 95%;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.chat-input {
+  flex-grow: 1;
+  padding: 10px 15px;
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 2px solid #00ffd2; /* Aqua border */
+  border-radius: 20px;
+  color: #ffffff;
+  outline: none;
+  transition: background-color 0.3s ease, border 0.3s ease;
+  font-size: 16px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  resize: none;
+  overflow: hidden;
+}
+
+.chat-input:focus {
+  border: 2px solid #00b2ff; /* Blue border on focus */
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Send button */
+.send-button {
+  margin-left: 10px;
+  background-color: #00ffd2;
+  color: #14151a;
+  padding: 12px;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+.send-button:hover {
+  background-color: #00b2ff; /* Slightly darker aqua on hover */
+  transform: scale(1.1);
+}
+
+/* Audio section */
+.audio-section {
+  display: flex;
   align-items: center;
   justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  background-color: #2e3138;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  position: absolute;
+  bottom: 100px;
+  right: 20px;
+  box-shadow: 0px 5px 15px rgba(0, 0, 0, 0.3);
+  transition: background-color 0.3s ease, transform 0.3s ease;
 }
 
-.App-link {
-  color: #61dafb;
+.audio-section:hover {
+  background-color: #393d45;
+  transform: scale(1.1);
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.audio-section span {
+  color: #00ffd2; /* Aqua text color for 'AUDIO' label */
+  font-weight: bold;
 }
