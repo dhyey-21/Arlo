@@ -1,10 +1,10 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Lottie from "react-lottie";
 import animationData from "./VoiceWave.json";
 import "./App.css";
 import "./components/login.css";
 import { ToastContainer, toast } from "react-toastify";
-import 'react-toastify/dist/ReactToastify.css';
+import "react-toastify/dist/ReactToastify.css";
 
 function App() {
   const [loggedIn, setLoggedIn] = useState(false);
@@ -16,6 +16,8 @@ function App() {
   const [speaking, setSpeaking] = useState(false);
   const [chatInput, setChatInput] = useState("");
   const [messages, setMessages] = useState([]);
+  const [isListening, setIsListening] = useState(false);
+  const recognition = useRef(null);
 
   const chatContentRef = useRef(null);
   const defaultOptions = {
@@ -26,6 +28,27 @@ function App() {
       preserveAspectRatio: "xMidYMid slice",
     },
   };
+
+  // Add this useEffect to initialize speech recognition
+  useEffect(() => {
+    if ("webkitSpeechRecognition" in window) {
+      recognition.current = new window.webkitSpeechRecognition();
+      recognition.current.continuous = false;
+      recognition.current.interimResults = false;
+
+      recognition.current.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        setChatInput(transcript);
+        handleSendMessage(transcript);
+        setIsListening(false);
+      };
+
+      recognition.current.onerror = (event) => {
+        console.error("Speech recognition error:", event.error);
+        setIsListening(false);
+      };
+    }
+  }, []);
 
   // Handle login
   const handleLogin = (e) => {
@@ -54,9 +77,9 @@ function App() {
   };
 
   // Chat functionalities
-  const handleSendMessage = () => {
-    if (chatInput.trim()) {
-      const userMessage = { text: chatInput, sender: "You", type: "user" };
+  const handleSendMessage = (transcript) => {
+    if (transcript.trim()) {
+      const userMessage = { text: transcript, sender: "You", type: "user" };
       addMessage(userMessage);
       setChatInput("");
       sendMessageToBackend(userMessage);
@@ -97,6 +120,17 @@ function App() {
       if (speaking) {
         handleSendMessage();
       }
+    }
+  };
+
+  // Add this function to handle microphone toggle
+  const toggleListening = () => {
+    if (isListening) {
+      recognition.current.stop();
+      setIsListening(false);
+    } else {
+      recognition.current.start();
+      setIsListening(true);
     }
   };
 
@@ -199,6 +233,17 @@ function App() {
               disabled={!speaking}
               onKeyPress={handleKeyPress}
             />
+            <button
+              className="mic-button"
+              onClick={toggleListening}
+              disabled={!speaking}
+            >
+              {isListening ? (
+                <span className="mic-icon recording">●</span>
+              ) : (
+                <span className="mic-icon">🎤</span>
+              )}
+            </button>
             {chatInput.trim() && (
               <button
                 className="send-button"
@@ -216,4 +261,3 @@ function App() {
 }
 
 export default App;
-

@@ -190,3 +190,52 @@ body {
   color: #00ffd2; /* Aqua text color for 'AUDIO' label */
   font-weight: bold;
 }
+
+.mic-button {
+  background: none;
+  border: none;
+  margin: 0 10px;
+  padding: 8px;
+  cursor: pointer;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  background-color: #1a1b23;
+  border: 2px solid #00ffd2;
+}
+
+.mic-button:hover {
+  background-color: #23242a;
+  transform: scale(1.1);
+}
+
+.mic-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mic-icon {
+  font-size: 20px;
+  color: #00ffd2;
+}
+
+.mic-icon.recording {
+  color: #ff4444;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+  }
+}
