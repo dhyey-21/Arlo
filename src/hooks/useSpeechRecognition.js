@@ -26,7 +26,9 @@ const useSpeechRecognition = () => {
   const startListening = useCallback(
     (onResult, onError) => {
       if (!recognition) {
-        console.error("Recognition not initialized");
+        const error = new Error("Recognition not initialized");
+        console.error(error);
+        onError?.(error);
         return;
       }
 
@@ -37,8 +39,12 @@ const useSpeechRecognition = () => {
 
       recognition.onresult = (event) => {
         console.log("Speech recognition result received");
-        const transcript = event.results[0][0].transcript;
-        onResult(transcript);
+        if (event.results.length > 0) {
+          const transcript = event.results[0][0].transcript;
+          onResult(transcript);
+        } else {
+          onError?.(new Error("No speech was detected"));
+        }
         setIsListening(false);
       };
 
@@ -58,6 +64,7 @@ const useSpeechRecognition = () => {
       } catch (error) {
         console.error("Error starting recognition:", error);
         onError?.(error);
+        setIsListening(false);
       }
     },
     [recognition]
