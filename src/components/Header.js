@@ -1,20 +1,27 @@
 import React from "react";
+import "./Header.css";
 
-const Header = ({ speaking, setSpeaking, handleLogout }) => {
+const Header = ({
+  handleLogout,
+  handleConnect,
+  handleDisconnect,
+  isConnected,
+}) => {
   return (
     <header className="header">
-      <div className="logo">
-        <span className="logo-text">Arlo</span>
-      </div>
-      <div className="header-buttons">
+      <h1 className="logo">
+        <i className="mdi mdi-robot"></i> Arlo
+      </h1>
+      <div className="controls">
         <button
-          className="connect-button"
-          onClick={() => setSpeaking(!speaking)}
+          className={`connect-btn ${isConnected ? "connected" : ""}`}
+          onClick={isConnected ? handleDisconnect : handleConnect}
         >
-          {speaking ? "Disconnect" : "Connect"}
+          <i className={`mdi ${isConnected ? "mdi-lan-disconnect" : "mdi-lan-connect"}`}></i>
+          {isConnected ? " Disconnect" : " Connect"}
         </button>
-        <button className="logout-button" onClick={handleLogout}>
-          Logout
+        <button className="logout-btn" onClick={handleLogout}>
+          <i className="mdi mdi-logout"></i> Logout
         </button>
       </div>
     </header>

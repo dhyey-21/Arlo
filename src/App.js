@@ -1,249 +1,244 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
+import SpeechRecognition, {
+  useSpeechRecognition,
+} from "react-speech-recognition";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import useSpeechRecognition from "./hooks/useSpeechRecognition";
 import AuthForm from "./components/AuthForm";
 import Header from "./components/Header";
 import ChatInterface from "./components/ChatInterface";
 import ChatInput from "./components/ChatInput";
-import animationData from "./VoiceWave.json";
 import "./App.css";
-import "./components/login.css";
 
 // Constants for API endpoints (for later)
 const API_ENDPOINTS = {
   CHAT: "/api/chat",
 };
 
+const ElectricBubble = ({ active, morphing }) => (
+  <div
+    className={`electric-bubble ${active ? "active" : ""} ${
+      morphing ? "morphing" : ""
+    }`}
+  >
+    <div className="electric-sphere"></div>
+    <div className="electric-lines"></div>
+    <div className="electric-glow"></div>
+    <div className="electric-particles"></div>
+  </div>
+);
+
 function App() {
-  // Auth states
   const [loggedIn, setLoggedIn] = useState(false);
-  const [isSignup, setIsSignup] = useState(false);
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [signupUsername, setSignupUsername] = useState("");
-  const [signupPassword, setSignupPassword] = useState("");
-
-  // Chat states
   const [speaking, setSpeaking] = useState(false);
-  const [chatInput, setChatInput] = useState("");
+  const [isListening, setIsListening] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
   const [messages, setMessages] = useState([]);
-  const chatContentRef = useRef(null);
+  const [morphing, setMorphing] = useState(false);
 
-  // Speech recognition
-  const { isListening, startListening, stopListening, isSupported } =
-    useSpeechRecognition();
+  // Speech Recognition setup
+  const {
+    transcript,
+    resetTranscript,
+    browserSupportsSpeechRecognition,
+    isMicrophoneAvailable,
+  } = useSpeechRecognition();
 
-  // Animation options
-  const defaultOptions = {
-    loop: true,
-    autoplay: true,
-    animationData: animationData,
-    rendererSettings: {
-      preserveAspectRatio: "xMidYMid slice",
-    },
-  };
+  // Check browser support on mount
+  useEffect(() => {
+    if (!browserSupportsSpeechRecognition) {
+      toast.error(
+        "Speech recognition is not supported in your browser. Please use Chrome."
+      );
+    }
+  }, [browserSupportsSpeechRecognition]);
 
-  // Auth handlers
-  const handleLogin = (e) => {
-    e.preventDefault();
-    setLoggedIn(true);
-  };
+  const handleConnect = async () => {
+    console.log("Connect button clicked"); // Debug log
 
-  const handleSignup = (e) => {
-    e.preventDefault();
-    toast.success("Signup successful! You can now log in.");
-    setIsSignup(false);
-  };
-
-  const handleLogout = () => {
-    setLoggedIn(false);
-    setUsername("");
-    setPassword("");
-    setMessages([]);
-    setSpeaking(false);
-  };
-
-  // Chat handlers
-  const handleSendMessage = async (transcript) => {
-    if (!transcript?.trim()) return;
+    if (!browserSupportsSpeechRecognition) {
+      toast.error(
+        "Speech recognition is not supported in your browser. Please use Chrome."
+      );
+      return;
+    }
 
     try {
-      // Add user message to chat
-      const userMessage = { text: transcript, sender: "You", type: "user" };
-      addMessage(userMessage);
-      setChatInput("");
+      // First request microphone permission
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: false,
+      });
 
-      // Send to backend and get response
-      await sendMessageToBackend(userMessage);
+      // Stop the stream right away - we just needed the permission
+      stream.getTracks().forEach((track) => track.stop());
+
+      // Test speech recognition
+      await SpeechRecognition.startListening();
+      await SpeechRecognition.stopListening();
+
+      setIsConnected(true);
+      toast.success("Successfully connected!");
+      console.log("Successfully connected to speech recognition"); // Debug log
     } catch (error) {
-      console.error("Error sending message:", error);
-      toast.error("Failed to send message. Please try again.");
+      console.error("Connection error:", error); // Debug log
+      setIsConnected(false);
+
+      if (error.name === "NotAllowedError") {
+        toast.error(
+          "Microphone access denied. Please allow microphone access."
+        );
+      } else {
+        toast.error(
+          "Failed to connect. Please check your microphone and try again."
+        );
+      }
     }
   };
 
-  const sendMessageToBackend = async (message) => {
+  const handleDisconnect = () => {
+    if (isListening) {
+      SpeechRecognition.stopListening();
+    }
+    setIsConnected(false);
+    setIsListening(false);
+    toast.info("Successfully disconnected");
+  };
+
+  const toggleListening = () => {
+    console.log("Previous listening state:", isListening);
+    if (!isListening) {
+      startListening();
+    } else {
+      stopListening();
+    }
+    console.log("New listening state:", !isListening);
+  };
+
+  const startListening = async () => {
+    if (!isConnected) {
+      toast.warning("Please connect first to use speech recognition.");
+      return;
+    }
+
     try {
-      // TODO: Replace with actual API call
-      const reply = "This is Arlo's response to your message.";
-      await handleArloReply(reply);
+      await SpeechRecognition.startListening({ continuous: true });
+      setIsListening(true);
     } catch (error) {
-      console.error("Error from backend:", error);
-      throw error;
+      console.error("Speech recognition error:", error);
+      setIsListening(false);
+      toast.error("Speech recognition error. Please try again.");
     }
   };
 
-  const handleArloReply = async (replyText) => {
-    const arloMessage = { text: replyText, sender: "Arlo", type: "assistant" };
-    addMessage(arloMessage);
-
-    // Text-to-speech
-    const utterance = new SpeechSynthesisUtterance(replyText);
-    const voices = window.speechSynthesis.getVoices();
-    if (voices.length > 0) {
-      utterance.voice = voices[0];
+  const stopListening = async () => {
+    if (isListening) {
+      await SpeechRecognition.stopListening();
+      if (transcript) {
+        handleSendMessage(transcript);
+        resetTranscript();
+      }
     }
+    setIsListening(false);
+  };
+
+  const handleSendMessage = async (text) => {
+    if (!text?.trim()) return;
+
+    const userMessage = { text, sender: "You", type: "user" };
+    setMessages((prev) => [...prev, userMessage]);
+
+    // Start morphing animation
+    setMorphing(true);
+    setTimeout(() => {
+      setSpeaking(true);
+      setMorphing(false);
+    }, 500);
+
+    // Simulate AI processing time
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    const responses = [
+      "Hello! How can I help you today?",
+      "I understand you're trying to reach out. What can I do for you?",
+      "I'm here to assist you. What would you like to know?",
+      "Thanks for your message. How may I help you?",
+    ];
+
+    const response = responses[Math.floor(Math.random() * responses.length)];
+    const arloMessage = { text: response, sender: "Arlo", type: "assistant" };
+
+    const utterance = new SpeechSynthesisUtterance(response);
+    utterance.onstart = () => {
+      setMessages((prev) => [...prev, arloMessage]);
+    };
+
+    utterance.onend = () => {
+      // Start morphing animation back
+      setMorphing(true);
+      setTimeout(() => {
+        setSpeaking(false);
+        setMorphing(false);
+      }, 500);
+    };
+
     window.speechSynthesis.speak(utterance);
   };
 
-  // Helper functions
-  const addMessage = (message) => {
-    setMessages((prev) => [...prev, message]);
-    scrollToBottom();
-  };
-
-  const scrollToBottom = () => {
-    if (chatContentRef.current) {
-      chatContentRef.current.scrollTop = chatContentRef.current.scrollHeight;
-    }
-  };
-
-  // Speech recognition handlers
-  const toggleListening = () => {
+  const handleLogout = () => {
     if (isListening) {
-      stopListening();
-    } else {
-      startListening(
-        (transcript) => {
-          console.log("Received transcript:", transcript);
-          if (transcript?.trim()) {
-            setChatInput(transcript);
-            handleSendMessage(transcript);
-          }
-        },
-        (error) => {
-          console.error("Speech recognition error:", error);
-          toast.error("Speech recognition failed. Please try again.");
-          stopListening();
-        }
-      );
+      SpeechRecognition.stopListening();
     }
-  };
-
-  // Input handlers
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter" && speaking) {
-      e.preventDefault();
-      handleSendMessage(chatInput);
-    }
-  };
-
-  // Effects
-  useEffect(() => {
-    if (!isSupported) {
-      toast.warning(
-        "Speech recognition is not supported in your browser. Please use Chrome for best experience."
-      );
-    }
-  }, [isSupported]);
-
-  // Render methods (you can move these to separate components later)
-  const renderAuthForm = () => {
-    return (
-      <div className="auth-form">
-        {isSignup ? (
-          <div className="signup-form">
-            <h2>Sign Up</h2>
-            <form onSubmit={handleSignup}>
-              <input
-                type="text"
-                placeholder="Username"
-                value={signupUsername}
-                onChange={(e) => setSignupUsername(e.target.value)}
-                required
-              />
-              <input
-                type="password"
-                placeholder="Password"
-                value={signupPassword}
-                onChange={(e) => setSignupPassword(e.target.value)}
-                required
-              />
-              <button type="submit">Sign Up</button>
-            </form>
-            <p>
-              Already have an account?{" "}
-              <button onClick={() => setIsSignup(false)}>Log In</button>
-            </p>
-          </div>
-        ) : (
-          <div className="login-form">
-            <h2>Login</h2>
-            <form onSubmit={handleLogin}>
-              <input
-                type="text"
-                placeholder="Username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-              />
-              <input
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-              <button type="submit">Log In</button>
-            </form>
-            <p>
-              Don't have an account?{" "}
-              <button onClick={() => setIsSignup(true)}>Sign Up</button>
-            </p>
-          </div>
-        )}
-      </div>
-    );
+    setLoggedIn(false);
+    setIsConnected(false);
+    setIsListening(false);
+    setSpeaking(false);
+    setMessages([]);
   };
 
   return (
-    <div className="app-container">
-      <ToastContainer />
+    <div className={`app-container ${speaking ? "speaking" : ""}`}>
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={true}
+        closeOnClick
+        rtl={false}
+      />
       {!loggedIn ? (
         <AuthForm setLoggedIn={setLoggedIn} />
       ) : (
         <>
           <Header
-            speaking={speaking}
-            setSpeaking={setSpeaking}
             handleLogout={handleLogout}
+            handleConnect={handleConnect}
+            handleDisconnect={handleDisconnect}
+            isConnected={isConnected}
           />
           <ChatInterface
             messages={messages}
-            chatContentRef={chatContentRef}
             speaking={speaking}
-            defaultOptions={defaultOptions}
+            isListening={isListening}
           />
           <ChatInput
-            chatInput={chatInput}
-            setChatInput={setChatInput}
-            speaking={speaking}
-            handleKeyPress={handleKeyPress}
-            isSupported={isSupported}
             isListening={isListening}
             toggleListening={toggleListening}
-            handleSendMessage={handleSendMessage}
+            transcript={transcript}
+            isSupported={browserSupportsSpeechRecognition}
+            speaking={speaking}
+            isConnected={isConnected}
           />
+          <div
+            className={`wave-container ${isListening ? "active" : ""} ${
+              morphing ? "morphing" : ""
+            }`}
+          >
+            <div className="wave wave1"></div>
+            <div className="wave wave2"></div>
+            <div className="wave wave3"></div>
+          </div>
+          <ElectricBubble active={speaking} morphing={morphing} />
         </>
       )}
     </div>

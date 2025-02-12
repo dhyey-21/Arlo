@@ -1,29 +1,29 @@
 import React from "react";
-import Lottie from "react-lottie";
 
-const ChatInterface = ({
-  messages,
-  chatContentRef,
-  speaking,
-  defaultOptions,
-}) => {
+const ChatInterface = ({ messages, speaking, isListening }) => {
+  // Only show the most recent message pair (user + assistant or just user)
+  const getRecentMessages = () => {
+    const recent = messages.slice(-2);
+    if (recent.length === 2 && recent[0].type === "assistant") {
+      return recent.slice(-1);
+    }
+    return recent;
+  };
+
+  const recentMessages = getRecentMessages();
+
   return (
-    <div className="main-content">
-      <div className="chat-section">
-        <div className="chat-content" ref={chatContentRef}>
-          {messages.map((message, index) => (
-            <div key={index} className={`chat-message ${message.type}`}>
-              <strong>{message.sender}:</strong> {message.text}
-            </div>
-          ))}
+    <div className="subtitle-container">
+      {recentMessages.map((message, index) => (
+        <div
+          key={index}
+          className={`subtitle ${
+            message.type === "user" ? "user-message" : "assistant-message"
+          } ${speaking && message.type === "user" ? "fade-up" : ""}`}
+        >
+          {message.text}
         </div>
-      </div>
-
-      {speaking && (
-        <div className="audio-section">
-          <Lottie options={defaultOptions} height={80} width={80} />
-        </div>
-      )}
+      ))}
     </div>
   );
 };
