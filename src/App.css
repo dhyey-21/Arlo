@@ -114,7 +114,7 @@ body {
   text-align: left;
 }
 
-/* Chat input container */
+/* Chat input container
 .chat-input-container {
   position: fixed;
   top: 70px;
@@ -124,9 +124,9 @@ body {
   align-items: center;
   padding: 1rem;
   z-index: 1000;
-}
+} */
 
-/* Microphone button */
+/* Microphone button
 .mic-button {
   width: 60px;
   height: 60px;
@@ -159,7 +159,7 @@ body {
   cursor: not-allowed;
   border-color: #666;
   color: #666;
-}
+} */
 
 /* Toast notifications */
 .Toastify__toast {
@@ -318,57 +318,6 @@ body {
   transform: scale(1.05);
 }
 
-/* Subtitle styling */
-.subtitle-container {
-  position: fixed;
-  top: 45%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
-  padding: 20px;
-  z-index: 1;
-}
-
-.subtitle {
-  background-color: rgba(26, 27, 35, 0.8);
-  padding: 15px 30px;
-  border-radius: 8px;
-  max-width: 80%;
-  text-align: center;
-  font-size: 1.2rem;
-  color: #ffffff;
-  border: 1px solid rgba(66, 83, 255, 0.3);
-  backdrop-filter: blur(8px);
-  animation: fadeIn 0.3s ease-in-out;
-}
-
-.user-message { 
-  text-align: right;
-  border-color: rgba(0, 255, 210, 0.3);
-  background-color: rgba(26, 27, 35, 0.6);
-}
-
-.assistant-message {
-  text-align: left;
-  border-color: rgba(66, 83, 255, 0.3);
-  background-color: rgba(26, 27, 35, 0.8);
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 .electric-bubble {
   position: fixed;
   bottom: 120px;
@@ -499,7 +448,7 @@ body {
   }
 }
 
-.messages-container {
+/* .messages-container {
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -554,7 +503,7 @@ body {
     opacity: 0.3;
     transform: translateY(-40px);
   }
-}
+} */
 
 /* Icon styles */
 .mdi {
