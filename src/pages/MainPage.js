@@ -1,16 +1,9 @@
-import React, { useState, useEffect } from "react";
-import SpeechRecognition, {
-  useSpeechRecognition,
-} from "react-speech-recognition";
+import React, { useState, useEffect, useRef } from "react";
 import { toast } from "react-toastify";
 import ChatInterface from "../Components/ChatInterface";
 import ChatInput from "../Components/ChatInput";
+import historyService from "../services/historyService";
 import "../styles/MainPage.css";
-
-// Constants for API endpoints (for later)
-const API_ENDPOINTS = {
-  CHAT: "/api/chat",
-};
 
 const ElectricBubble = ({ active, morphing }) => (
   <div
@@ -25,100 +18,73 @@ const ElectricBubble = ({ active, morphing }) => (
   </div>
 );
 
-function MainPage() {
-  const [speaking, setSpeaking] = useState(false);
-  const [isListening, setIsListening] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
-  const [messages, setMessages] = useState([]);
-  const [morphing, setMorphing] = useState(false);
+function MainPage({
+  setLoggedIn,
+  isConnected,
+  setIsConnected,
+  isListening,
+  setIsListening,
+  isMuted,
+  handleToggleMute,
+  transcript,
+  setTranscript,
+  resetTranscript,
+  isTestMode,
+  getTestResponse,
+  silenceDuration,
+  browserSupportsSpeechRecognition,
+  speaking,
+  setSpeaking,
+  morphing,
+  setMorphing,
+}) {
+  const [messages, setMessages] = useState(() => {
+    // Initialize messages from localStorage if available
+    const savedMessages = localStorage.getItem("arlo_messages");
+    return savedMessages ? JSON.parse(savedMessages) : [];
+  });
+  const lastTranscriptRef = useRef("");
+  const silenceTimeoutRef = useRef(null);
 
-  const { transcript, resetTranscript, browserSupportsSpeechRecognition } =
-    useSpeechRecognition();
-
+  // Save messages to localStorage whenever they change
   useEffect(() => {
-    if (!browserSupportsSpeechRecognition) {
-      toast.error(
-        "Speech recognition is not supported in your browser. Please use Chrome."
-      );
-    }
-  }, [browserSupportsSpeechRecognition]);
+    localStorage.setItem("arlo_messages", JSON.stringify(messages));
+  }, [messages]);
 
-  const handleConnect = async () => {
-    if (!browserSupportsSpeechRecognition) {
-      toast.error(
-        "Speech recognition is not supported in your browser. Please use Chrome."
-      );
-      return;
-    }
+  // Handle incoming transcripts
+  useEffect(() => {
+    if (transcript && isConnected && !isMuted) {
+      // Clear any existing timeout
+      if (silenceTimeoutRef.current) {
+        clearTimeout(silenceTimeoutRef.current);
+      }
 
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-        video: false,
-      });
-      stream.getTracks().forEach((track) => track.stop());
-      await SpeechRecognition.startListening();
-      await SpeechRecognition.stopListening();
-      setIsConnected(true);
-      toast.success("Successfully connected!");
-    } catch (error) {
-      console.error("Connection error:", error);
-      setIsConnected(false);
-      if (error.name === "NotAllowedError") {
-        toast.error(
-          "Microphone access denied. Please allow microphone access."
-        );
-      } else {
-        toast.error(
-          "Failed to connect. Please check your microphone and try again."
-        );
+      // Only process new transcripts (not the same as last time)
+      if (transcript !== lastTranscriptRef.current) {
+        // Update the last transcript
+        lastTranscriptRef.current = transcript;
+
+        // Set a new timeout to process the transcript after a period of silence
+        silenceTimeoutRef.current = setTimeout(() => {
+          if (lastTranscriptRef.current === transcript) {
+            handleSendMessage(transcript);
+            resetTranscript();
+            lastTranscriptRef.current = "";
+          }
+        }, silenceDuration);
       }
     }
-  };
+  }, [transcript, isConnected, isMuted, silenceDuration]);
 
-  const handleDisconnect = () => {
-    if (isListening) {
-      SpeechRecognition.stopListening();
-    }
-    setIsConnected(false);
-    setIsListening(false);
-    toast.info("Successfully disconnected");
-  };
-
-  const toggleListening = () => {
-    if (!isListening) {
-      startListening();
-    } else {
-      stopListening();
-    }
-  };
-
-  const startListening = async () => {
-    if (!isConnected) {
-      toast.warning("Please connect first to use speech recognition.");
-      return;
-    }
-
-    try {
-      await SpeechRecognition.startListening({ continuous: true });
-      setIsListening(true);
-    } catch (error) {
-      console.error("Speech recognition error:", error);
-      setIsListening(false);
-      toast.error("Speech recognition error. Please try again.");
-    }
-  };
-
-  const stopListening = async () => {
-    if (isListening) {
-      await SpeechRecognition.stopListening();
-      if (transcript) {
-        handleSendMessage(transcript);
-        resetTranscript();
+  // Cleanup timeout and reset last transcript when muted
+  useEffect(() => {
+    if (isMuted) {
+      if (silenceTimeoutRef.current) {
+        clearTimeout(silenceTimeoutRef.current);
       }
+      lastTranscriptRef.current = "";
     }
-    setIsListening(false);
-  };
+  }, [isMuted]);
 
   const handleSendMessage = async (text) => {
     if (!text?.trim()) return;
@@ -134,14 +100,11 @@ function MainPage() {
 
     await new Promise((resolve) => setTimeout(resolve, 500));
 
-    const responses = [
-      "Hello! How can I help you today?",
-      "I understand you're trying to reach out. What can I do for you?",
-      "I'm here to assist you. What would you like to know?",
-      "Thanks for your message. How may I help you?",
-    ];
-
-    const response = responses[Math.floor(Math.random() * responses.length)];
+    // In test mode, use predefined responses
+    // Later, this will be replaced with actual backend API calls
+    const response = isTestMode
+      ? getTestResponse()
+      : "Backend response will go here";
     const arloMessage = { text: response, sender: "Arlo", type: "assistant" };
 
     const utterance = new SpeechSynthesisUtterance(response);
@@ -149,32 +112,31 @@ function MainPage() {
       setMessages((prev) => [...prev, arloMessage]);
     };
 
-    utterance.onend = () => {
+    utterance.onend = async () => {
       setMorphing(true);
       setTimeout(() => {
         setSpeaking(false);
         setMorphing(false);
       }, 500);
+
+      // Save the conversation to history
+      try {
+        const currentMessages = [...messages, userMessage, arloMessage];
+        await historyService.addConversation(currentMessages);
+      } catch (error) {
+        console.error("Error saving to history:", error);
+        toast.error("Failed to save conversation to history");
+      }
     };
 
     window.speechSynthesis.speak(utterance);
   };
 
+  // Determine when to show wave animation
+  const shouldShowWave = isListening && !isMuted && !speaking;
+
   return (
     <div className="main-content">
-      <div className="top-bar">
-        <button
-          onClick={isConnected ? handleDisconnect : handleConnect}
-          className={`connect-btn ${isConnected ? "connected" : ""}`}
-        >
-          <i
-            className={`mdi ${
-              isConnected ? "mdi-lan-disconnect" : "mdi-lan-connect"
-            }`}
-          ></i>
-          {isConnected ? "Disconnect" : "Connect"}
-        </button>
-      </div>
       <ChatInterface
         messages={messages}
         speaking={speaking}
@@ -182,14 +144,15 @@ function MainPage() {
       />
       <ChatInput
         isListening={isListening}
-        toggleListening={toggleListening}
+        toggleListening={handleToggleMute}
         transcript={transcript}
-        isSupported={browserSupportsSpeechRecognition}
         speaking={speaking}
         isConnected={isConnected}
+        isMuted={isMuted}
+        isSupported={browserSupportsSpeechRecognition}
       />
       <div
-        className={`wave-container ${isListening ? "active" : ""} ${
+        className={`wave-container ${shouldShowWave ? "active" : ""} ${
           morphing ? "morphing" : ""
         }`}
       >

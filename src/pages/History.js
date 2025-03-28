@@ -1,90 +1,177 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { toast } from "react-toastify";
 import "../styles/History.css";
+import historyService from "../services/historyService";
 
 const History = () => {
-  // This would typically come from a database or localStorage
-  const mockHistory = [
-    {
-      date: "2024-03-10",
-      conversations: [
-        {
-          time: "14:30",
-          messages: [
-            { type: "user", text: "Hello Arlo!" },
-            { type: "assistant", text: "Hi! How can I help you today?" },
-          ],
-        },
-        {
-          time: "14:35",
-          messages: [
-            { type: "user", text: "What's the weather like?" },
-            {
-              type: "assistant",
-              text: "I can help you check the weather. Where are you located?",
-            },
-          ],
-        },
-      ],
-    },
-    {
-      date: "2024-03-09",
-      conversations: [
-        {
-          time: "09:15",
-          messages: [
-            { type: "user", text: "Good morning" },
-            { type: "assistant", text: "Good morning! How may I assist you?" },
-          ],
-        },
-      ],
-    },
-  ];
+  const [history, setHistory] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState(null);
+
+  // Load history when component mounts
+  useEffect(() => {
+    loadHistory();
+  }, []);
+
+  const loadHistory = async () => {
+    try {
+      setIsLoading(true);
+      const data = await historyService.getAllHistory();
+      setHistory(data);
+    } catch (error) {
+      console.error("Error loading history:", error);
+      toast.error("Failed to load history");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleClearHistory = async () => {
+    try {
+      const success = await historyService.clearHistory();
+      if (success) {
+        setHistory([]);
+        toast.success("History cleared successfully");
+      } else {
+        toast.error("Failed to clear history");
+      }
+    } catch (error) {
+      console.error("Error clearing history:", error);
+      toast.error("Failed to clear history");
+    }
+  };
+
+  const handleExportHistory = async () => {
+    try {
+      const success = await historyService.exportHistory();
+      if (!success) {
+        toast.error("Failed to export history");
+      }
+    } catch (error) {
+      console.error("Error exporting history:", error);
+      toast.error("Failed to export history");
+    }
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="history-container">
+        <div className="loading-spinner">
+          <i className="mdi mdi-loading mdi-spin"></i>
+          <p>Loading your conversation history...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (history.length === 0) {
+    return (
+      <div className="history-container">
+        <h1>Conversation History</h1>
+        <div className="empty-history">
+          <i className="mdi mdi-history"></i>
+          <p>No conversations yet</p>
+          <p className="empty-history-subtitle">
+            Start chatting with Arlo to see your history here
+          </p>
+        </div>
+        <div className="history-actions">
+          <button className="export-history" onClick={handleExportHistory}>
+            <i className="mdi mdi-download"></i>
+            Export History
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="history-container">
-      <h1>Conversation History</h1>
-
-      <div className="history-content">
-        {mockHistory.map((day, dayIndex) => (
-          <div key={dayIndex} className="history-day">
-            <h2 className="date-header">{day.date}</h2>
-
-            {day.conversations.map((conversation, convIndex) => (
-              <div key={convIndex} className="conversation-group">
-                <div className="time-stamp">{conversation.time}</div>
-
-                <div className="messages">
-                  {conversation.messages.map((message, msgIndex) => (
-                    <div
-                      key={msgIndex}
-                      className={`message ${
-                        message.type === "user"
-                          ? "user-message"
-                          : "assistant-message"
-                      }`}
-                    >
-                      <div className="message-sender">
-                        {message.type === "user" ? "You" : "Arlo"}
-                      </div>
-                      <div className="message-text">{message.text}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        ))}
+      <div className="history-header">
+        <h1>Conversation History</h1>
+        <div className="history-actions">
+          <button className="clear-history" onClick={handleClearHistory}>
+            <i className="mdi mdi-delete"></i>
+            Clear History
+          </button>
+          <button className="export-history" onClick={handleExportHistory}>
+            <i className="mdi mdi-download"></i>
+            Export History
+          </button>
+        </div>
       </div>
 
-      <div className="history-actions">
-        <button className="clear-history">
-          <i className="mdi mdi-delete"></i>
-          Clear History
-        </button>
-        <button className="export-history">
-          <i className="mdi mdi-download"></i>
-          Export History
-        </button>
+      <div className="history-content">
+        {history.map((day, dayIndex) => (
+          <div
+            key={dayIndex}
+            className={`history-day ${
+              selectedDate === day.date ? "expanded" : ""
+            }`}
+            onClick={() =>
+              setSelectedDate(selectedDate === day.date ? null : day.date)
+            }
+          >
+            <div className="date-header">
+              <h2>{formatDate(day.date)}</h2>
+              <i
+                className={`mdi ${
+                  selectedDate === day.date
+                    ? "mdi-chevron-up"
+                    : "mdi-chevron-down"
+                }`}
+              ></i>
+            </div>
+
+            <div className="conversations-container">
+              {day.conversations.map((conversation, convIndex) => (
+                <div key={convIndex} className="conversation-group">
+                  <div className="time-stamp">
+                    <i className="mdi mdi-clock-outline"></i>
+                    {conversation.time}
+                  </div>
+
+                  <div className="messages">
+                    {conversation.messages.map((message, msgIndex) => (
+                      <div
+                        key={msgIndex}
+                        className={`message ${
+                          message.type === "user"
+                            ? "user-message"
+                            : "assistant-message"
+                        }`}
+                      >
+                        <div className="message-header">
+                          <i
+                            className={`mdi ${
+                              message.type === "user"
+                                ? "mdi-account"
+                                : "mdi-robot"
+                            }`}
+                          ></i>
+                          <span className="message-sender">
+                            {message.sender}
+                          </span>
+                        </div>
+                        <div className="message-text">{message.text}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

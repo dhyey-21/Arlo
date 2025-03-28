@@ -10,9 +10,22 @@
   border-bottom: 1px solid rgba(0, 255, 157, 0.1);
 }
 
-.navbar-brand {
+.navbar-left {
   display: flex;
   align-items: center;
+  gap: 1rem;
+}
+
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.navbar-brand {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 .navbar-logo {
@@ -52,6 +65,8 @@
   font-size: 0.9rem;
   transition: all 0.3s ease;
   background: transparent;
+  border: none;
+  cursor: pointer;
 }
 
 .nav-link i {
@@ -66,6 +81,28 @@
 .nav-link.active {
   background: rgba(0, 255, 157, 0.15);
   color: #00ff9d;
+}
+
+.connect-btn {
+  background: #00ff9d;
+  color: #000;
+  font-weight: 500;
+}
+
+.connect-btn:hover {
+  background: #00cc7d;
+  color: #000;
+  transform: translateY(-2px);
+}
+
+.connect-btn.connected {
+  background: #ff4253;
+  color: #fff;
+}
+
+.connect-btn.connected:hover {
+  background: #cc3442;
+  color: #fff;
 }
 
 .logout-btn {
@@ -86,7 +123,7 @@
     padding: 0.8rem 1rem;
   }
 
-  .navbar-links {
+  .navbar-left, .navbar-right {
     gap: 0.5rem;
   }
 
@@ -101,5 +138,9 @@
   .nav-link i {
     font-size: 1.2rem;
     margin: 0;
+  }
+
+  .navbar-logo span {
+    display: none;
   }
 } 

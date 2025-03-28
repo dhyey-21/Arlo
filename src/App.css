@@ -166,6 +166,7 @@ body {
   border-radius: 10px;
   background: rgba(0, 0, 0, 0.9);
   color: #fff;
+  z-index: 90;
 }
 
 .Toastify__toast--success {
@@ -175,6 +176,11 @@ body {
 
 .Toastify__toast--error {
   background: rgba(255, 77, 77, 0.9);
+}
+
+/* Toast container */
+.Toastify__toast-container {
+  z-index: 90;
 }
 
 /* Animations */

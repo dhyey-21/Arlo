@@ -11,50 +11,6 @@
   overflow: hidden;
 }
 
-.top-bar {
-  display: flex;
-  justify-content: flex-start;
-  padding: 1rem 2rem;
-  background: transparent;
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 10;
-}
-
-.connect-btn {
-  background: #00ff9d;
-  color: #000;
-  border: none;
-  padding: 0.5rem 1.5rem;
-  border-radius: 25px;
-  font-size: 1rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  transition: all 0.3s ease;
-  font-weight: 500;
-}
-
-.connect-btn i {
-  font-size: 1.2rem;
-}
-
-.connect-btn:hover {
-  background: #00cc7d;
-  transform: translateY(-2px);
-}
-
-.connect-btn.connected {
-  background: #ff4253;
-  color: #fff;
-}
-
-.connect-btn.connected:hover {
-  background: #cc3442;
-}
-
 /* Chat interface styles */
 .chat-interface {
   position: absolute;
