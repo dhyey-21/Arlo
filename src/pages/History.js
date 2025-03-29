@@ -10,6 +10,7 @@ const History = () => {
   const historyEndRef = useRef(null);
   const historyContentRef = useRef(null);
   const [shouldScroll, setShouldScroll] = useState(false);
+  const [autoExpandLatest, setAutoExpandLatest] = useState(true);
 
   // Load history when component mounts
   useEffect(() => {
@@ -24,15 +25,34 @@ const History = () => {
     }
   }, [history, shouldScroll]);
 
+  // Auto-expand latest date when history loads
+  useEffect(() => {
+    if (history.length > 0 && autoExpandLatest) {
+      setSelectedDate(history[0].date);
+      setAutoExpandLatest(false);
+    }
+  }, [history, autoExpandLatest]);
+
   const loadHistory = async () => {
     try {
       setIsLoading(true);
+      console.log("Fetching history...");
       const data = await historyService.getAllHistory();
+      console.log("Received history data:", data);
+
+      if (!Array.isArray(data)) {
+        throw new Error("Invalid history data format");
+      }
+
+      if (data.length === 0) {
+        console.log("No history data available");
+      }
+
       setHistory(data);
       setShouldScroll(true);
     } catch (error) {
       console.error("Error loading history:", error);
-      toast.error("Failed to load history");
+      toast.error(`Failed to load history: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -43,6 +63,7 @@ const History = () => {
       const success = await historyService.clearHistory();
       if (success) {
         setHistory([]);
+        setSelectedDate(null);
         toast.success("History cleared successfully");
       } else {
         toast.error("Failed to clear history");

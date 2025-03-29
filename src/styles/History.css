@@ -4,6 +4,10 @@
   margin: 0 auto;
   min-height: calc(100vh - 64px);
   background: #14151a;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .history-header {
@@ -13,6 +17,7 @@
   margin-bottom: 2rem;
   padding-bottom: 1rem;
   border-bottom: 1px solid rgba(0, 255, 157, 0.2);
+  flex-shrink: 0;
 }
 
 .history-header h1 {
@@ -37,6 +42,9 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  overflow-y: auto;
+  flex-grow: 1;
+  padding-right: 1rem;
 }
 
 .history-day {
@@ -85,11 +93,16 @@
 .conversations-container {
   max-height: 0;
   overflow: hidden;
-  transition: max-height 0.3s ease-out;
+  transition: max-height 0.5s ease-out;
+  opacity: 0;
+  transform: translateY(-10px);
 }
 
 .history-day.expanded .conversations-container {
-  max-height: 2000px;
+  max-height: none;
+  opacity: 1;
+  transform: translateY(0);
+  transition: all 0.5s ease-out;
 }
 
 .conversation-group {

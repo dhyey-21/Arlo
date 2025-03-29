@@ -3,6 +3,9 @@ const STORAGE_KEYS = {
   HISTORY: "arlo_chat_history",
 };
 
+// API endpoints
+const API_BASE_URL = "http://localhost:5000"; // Update this to match your backend URL
+
 // Helper function to format date
 const formatDate = (date) => {
   return date.toISOString().split("T")[0];
@@ -57,16 +60,49 @@ const historyService = {
   // Get all history
   getAllHistory: async () => {
     try {
-      // Get from backend
-      const response = await fetch("/api/history");
+      console.log("Making request to history endpoint");
+      const response = await fetch(`${API_BASE_URL}/api/history`, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        credentials: "include", // Include cookies if using session-based auth
+      });
+
+      console.log("Response status:", response.status);
+
       if (!response.ok) {
-        throw new Error("Failed to fetch history");
+        let errorMessage;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || "Failed to fetch history";
+        } catch (e) {
+          const errorText = await response.text();
+          console.error("Raw error response:", errorText);
+          errorMessage = `Server error: ${response.status}`;
+        }
+        throw new Error(errorMessage);
       }
+
       const data = await response.json();
-      return sortHistory(data);
+      console.log("Raw history data:", data);
+
+      if (!Array.isArray(data)) {
+        console.error("Invalid data format:", data);
+        throw new Error("Invalid history data format from server");
+      }
+
+      // Sort history by date (newest first)
+      const sortedData = data.sort(
+        (a, b) => new Date(b.date) - new Date(a.date)
+      );
+      console.log("Sorted history data:", sortedData);
+
+      return sortedData;
     } catch (error) {
-      console.error("Error fetching history:", error);
-      return [];
+      console.error("Error in getAllHistory:", error);
+      throw error;
     }
   },
 
@@ -75,10 +111,13 @@ const historyService = {
     try {
       const newConversation = createConversationEntry(messages);
 
-      // Send to backend
-      const response = await fetch("/api/history", {
+      const response = await fetch(`${API_BASE_URL}/api/history`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
         body: JSON.stringify(newConversation),
       });
 
@@ -96,9 +135,13 @@ const historyService = {
   // Clear all history
   clearHistory: async () => {
     try {
-      // Clear from backend
-      const response = await fetch("/api/history", {
+      const response = await fetch(`${API_BASE_URL}/api/history`, {
         method: "DELETE",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
       });
 
       if (!response.ok) {
