@@ -3,7 +3,6 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import AuthForm from "./pages/AuthForm";
 import MainPage from "./pages/MainPage";
-import Settings from "./pages/Settings";
 import History from "./pages/History";
 import Navbar from "./Components/Navbar";
 import {
@@ -18,6 +17,7 @@ import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
 import { toast } from "react-toastify";
+import { authService } from "./services/authService";
 
 // Wrapper component to handle location changes
 const AppContent = () => {
@@ -41,6 +41,15 @@ const AppContent = () => {
       maxAlternatives: 1,
       clearTranscriptOnListen: false,
     });
+
+  // Check if user is logged in on component mount
+  useEffect(() => {
+    const user = authService.getCurrentUser();
+    console.log("App mounted, checking user:", user);
+    if (user) {
+      setLoggedIn(true);
+    }
+  }, []);
 
   // Clear transcript and reset states when navigating away from main page
   useEffect(() => {
@@ -73,6 +82,8 @@ const AppContent = () => {
   }, [interimTranscript]);
 
   const handleLogout = () => {
+    console.log("Handling logout");
+    authService.logout();
     setLoggedIn(false);
     setIsConnected(false);
     setIsListening(false);
@@ -83,6 +94,7 @@ const AppContent = () => {
     // Only clear current messages, keep history
     localStorage.removeItem("arlo_messages");
     SpeechRecognition.stopListening();
+    toast.success("Successfully logged out");
   };
 
   const handleConnect = async () => {
@@ -192,10 +204,6 @@ const AppContent = () => {
               <Navigate to="/" replace />
             )
           }
-        />
-        <Route
-          path="/settings"
-          element={loggedIn ? <Settings /> : <Navigate to="/login" replace />}
         />
         <Route
           path="/history"

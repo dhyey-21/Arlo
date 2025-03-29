@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { toast } from "react-toastify";
 import "../styles/History.css";
 import historyService from "../services/historyService";
@@ -7,17 +7,29 @@ const History = () => {
   const [history, setHistory] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(null);
+  const historyEndRef = useRef(null);
+  const historyContentRef = useRef(null);
+  const [shouldScroll, setShouldScroll] = useState(false);
 
   // Load history when component mounts
   useEffect(() => {
     loadHistory();
   }, []);
 
+  // Scroll to bottom when history updates and shouldScroll is true
+  useEffect(() => {
+    if (shouldScroll && historyEndRef.current) {
+      historyEndRef.current.scrollIntoView({ behavior: "smooth" });
+      setShouldScroll(false);
+    }
+  }, [history, shouldScroll]);
+
   const loadHistory = async () => {
     try {
       setIsLoading(true);
       const data = await historyService.getAllHistory();
       setHistory(data);
+      setShouldScroll(true);
     } catch (error) {
       console.error("Error loading history:", error);
       toast.error("Failed to load history");
@@ -61,6 +73,12 @@ const History = () => {
       month: "long",
       day: "numeric",
     });
+  };
+
+  const handleDateClick = (date) => {
+    setSelectedDate(selectedDate === date ? null : date);
+    // Don't scroll when expanding/collapsing dates
+    setShouldScroll(false);
   };
 
   if (isLoading) {
@@ -111,18 +129,18 @@ const History = () => {
         </div>
       </div>
 
-      <div className="history-content">
+      <div className="history-content" ref={historyContentRef}>
         {history.map((day, dayIndex) => (
           <div
             key={dayIndex}
             className={`history-day ${
               selectedDate === day.date ? "expanded" : ""
             }`}
-            onClick={() =>
-              setSelectedDate(selectedDate === day.date ? null : day.date)
-            }
           >
-            <div className="date-header">
+            <div
+              className="date-header"
+              onClick={() => handleDateClick(day.date)}
+            >
               <h2>{formatDate(day.date)}</h2>
               <i
                 className={`mdi ${
@@ -172,6 +190,7 @@ const History = () => {
             </div>
           </div>
         ))}
+        <div ref={historyEndRef} />
       </div>
     </div>
   );

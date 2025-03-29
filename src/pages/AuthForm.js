@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { toast } from "react-toastify";
 import "../styles/AuthForm.css";
+import { authService } from "../services/authService";
 
 const AuthForm = ({ setLoggedIn }) => {
   const [isLogin, setIsLogin] = useState(true);
@@ -13,11 +14,43 @@ const AuthForm = ({ setLoggedIn }) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      setLoggedIn(true);
+    try {
+      // Basic validation
+      if (!email || !password) {
+        throw new Error("Please fill in all fields");
+      }
+
+      if (!isLogin && password !== confirmPassword) {
+        throw new Error("Passwords do not match");
+      }
+
+      if (password.length < 6) {
+        throw new Error("Password must be at least 6 characters long");
+      }
+
+      console.log("Form submitted:", { isLogin, email });
+
+      if (isLogin) {
+        const result = await authService.login(email, password);
+        console.log("Login result:", result);
+        if (result.success) {
+          toast.success("Successfully logged in!");
+          setLoggedIn(true);
+        }
+      } else {
+        const result = await authService.register(email, password);
+        console.log("Registration result:", result);
+        if (result.success) {
+          toast.success("Successfully registered!");
+          setLoggedIn(true);
+        }
+      }
+    } catch (error) {
+      console.error("Auth error:", error);
+      toast.error(error.message || "An error occurred");
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   const toggleForm = () => {
@@ -56,6 +89,7 @@ const AuthForm = ({ setLoggedIn }) => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              minLength={6}
             />
           </div>
 
@@ -68,6 +102,7 @@ const AuthForm = ({ setLoggedIn }) => {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
+                minLength={6}
               />
             </div>
           )}

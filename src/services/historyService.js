@@ -47,18 +47,23 @@ const createDayEntry = (conversation) => {
   };
 };
 
+// Helper function to sort history by date
+const sortHistory = (history) => {
+  return history.sort((a, b) => new Date(b.date) - new Date(a.date));
+};
+
 // History service
 const historyService = {
   // Get all history
   getAllHistory: async () => {
     try {
-      // For testing: Get from localStorage
-      const history = localStorage.getItem(STORAGE_KEYS.HISTORY);
-      return history ? JSON.parse(history) : [];
-
-      // TODO: When backend is ready, replace with:
-      // const response = await fetch('/api/history');
-      // return await response.json();
+      // Get from backend
+      const response = await fetch("/api/history");
+      if (!response.ok) {
+        throw new Error("Failed to fetch history");
+      }
+      const data = await response.json();
+      return sortHistory(data);
     } catch (error) {
       console.error("Error fetching history:", error);
       return [];
@@ -68,30 +73,18 @@ const historyService = {
   // Add a new conversation
   addConversation: async (messages) => {
     try {
-      const history = await historyService.getAllHistory();
-      const today = getToday();
       const newConversation = createConversationEntry(messages);
 
-      // Find today's entry
-      const todayEntry = history.find((day) => day.date === today);
+      // Send to backend
+      const response = await fetch("/api/history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newConversation),
+      });
 
-      if (todayEntry) {
-        // Add to existing day
-        todayEntry.conversations.push(newConversation);
-      } else {
-        // Create new day entry
-        history.push(createDayEntry(newConversation));
+      if (!response.ok) {
+        throw new Error("Failed to add conversation");
       }
-
-      // For testing: Save to localStorage
-      localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(history));
-
-      // TODO: When backend is ready, replace with:
-      // await fetch('/api/history', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(newConversation)
-      // });
 
       return true;
     } catch (error) {
@@ -103,11 +96,14 @@ const historyService = {
   // Clear all history
   clearHistory: async () => {
     try {
-      // For testing: Clear localStorage
-      localStorage.removeItem(STORAGE_KEYS.HISTORY);
+      // Clear from backend
+      const response = await fetch("/api/history", {
+        method: "DELETE",
+      });
 
-      // TODO: When backend is ready, replace with:
-      // await fetch('/api/history', { method: 'DELETE' });
+      if (!response.ok) {
+        throw new Error("Failed to clear history");
+      }
 
       return true;
     } catch (error) {

@@ -25,13 +25,6 @@ const Navbar = ({
           <i className="mdi mdi-history"></i>
           <span>History</span>
         </NavLink>
-        <NavLink
-          to="/settings"
-          className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}
-        >
-          <i className="mdi mdi-cog"></i>
-          <span>Settings</span>
-        </NavLink>
       </div>
 
       <div className="navbar-brand">
