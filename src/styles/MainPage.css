@@ -87,45 +87,6 @@
   }
 }
 
-/* Microphone button specific styles */
-.mic-button {
-  position: fixed;
-  bottom: 37rem;
-  right: 2rem;
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  border: 2px solid #00ff9d;
-  background: rgba(0, 0, 0, 0.5);
-  color: #00ff9d;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(0, 255, 157, 0.2);
-  z-index: 100;
-}
-
-.mic-button:hover:not(.disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 255, 157, 0.3);
-}
-
-.mic-button.active {
-  background: #00ff9d;
-  color: #000;
-  animation: pulse 2s infinite;
-}
-
-.mic-button.disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  border-color: #666;
-  color: #666;
-}
-
 /* Wave animation for active speaking */
 .wave-container {
   position: fixed;

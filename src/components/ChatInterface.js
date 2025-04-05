@@ -1,4 +1,5 @@
 import React from "react";
+import PropTypes from "prop-types";
 
 const ChatInterface = ({ messages, speaking, isListening }) => {
   // Get only the most recent message pair
@@ -38,6 +39,22 @@ const ChatInterface = ({ messages, speaking, isListening }) => {
       </div>
     </div>
   );
+};
+
+ChatInterface.propTypes = {
+  messages: PropTypes.arrayOf(
+    PropTypes.shape({
+      type: PropTypes.oneOf(["user", "assistant"]).isRequired,
+      text: PropTypes.string.isRequired,
+    })
+  ).isRequired,
+  speaking: PropTypes.bool,
+  isListening: PropTypes.bool,
+};
+
+ChatInterface.defaultProps = {
+  speaking: false,
+  isListening: false,
 };
 
 export default ChatInterface;

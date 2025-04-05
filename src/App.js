@@ -4,7 +4,8 @@ import "react-toastify/dist/ReactToastify.css";
 import AuthForm from "./pages/AuthForm";
 import MainPage from "./pages/MainPage";
 import History from "./pages/History";
-import Navbar from "./Components/Navbar";
+import Navbar from "./components/Navbar";
+import ErrorBoundary from "./components/ErrorBoundary";
 import {
   BrowserRouter as Router,
   Routes,
@@ -91,8 +92,7 @@ const AppContent = () => {
     setTranscript("");
     setSpeaking(false);
     setMorphing(false);
-    // Only clear current messages, keep history
-    localStorage.removeItem("arlo_messages");
+    // Don't clear messages from localStorage to preserve history
     SpeechRecognition.stopListening();
     toast.success("Successfully logged out");
   };
@@ -196,21 +196,27 @@ const AppContent = () => {
       )}
       <Routes>
         <Route
+          path="/"
+          element={
+            !loggedIn ? (
+              <AuthForm setLoggedIn={setLoggedIn} />
+            ) : (
+              <Navigate to="/home" replace />
+            )
+          }
+        />
+        <Route
           path="/login"
           element={
             !loggedIn ? (
               <AuthForm setLoggedIn={setLoggedIn} />
             ) : (
-              <Navigate to="/" replace />
+              <Navigate to="/home" replace />
             )
           }
         />
         <Route
-          path="/history"
-          element={loggedIn ? <History /> : <Navigate to="/login" replace />}
-        />
-        <Route
-          path="/*"
+          path="/home"
           element={
             loggedIn ? (
               <MainPage
@@ -220,6 +226,7 @@ const AppContent = () => {
                 isListening={isListening}
                 setIsListening={setIsListening}
                 isMuted={isMuted}
+                setIsMuted={setIsMuted}
                 handleToggleMute={handleToggleMute}
                 transcript={transcript}
                 setTranscript={setTranscript}
@@ -233,21 +240,28 @@ const AppContent = () => {
                 setMorphing={setMorphing}
               />
             ) : (
-              <Navigate to="/login" replace />
+              <Navigate to="/" replace />
             )
           }
         />
+        <Route
+          path="/history"
+          element={loggedIn ? <History /> : <Navigate to="/" replace />}
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>
   );
 };
 
-function App() {
+const App = () => {
   return (
-    <Router>
-      <AppContent />
-    </Router>
+    <ErrorBoundary>
+      <Router>
+        <AppContent />
+      </Router>
+    </ErrorBoundary>
   );
-}
+};
 
 export default App;

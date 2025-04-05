@@ -3,9 +3,6 @@ const STORAGE_KEYS = {
   HISTORY: "arlo_chat_history",
 };
 
-// API endpoints
-const API_BASE_URL = "http://localhost:5000"; // Update this to match your backend URL
-
 // Helper function to format date
 const formatDate = (date) => {
   return date.toISOString().split("T")[0];
@@ -60,49 +57,24 @@ const historyService = {
   // Get all history
   getAllHistory: async () => {
     try {
-      console.log("Making request to history endpoint");
-      const response = await fetch(`${API_BASE_URL}/api/history`, {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        credentials: "include", // Include cookies if using session-based auth
-      });
-
-      console.log("Response status:", response.status);
-
-      if (!response.ok) {
-        let errorMessage;
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || "Failed to fetch history";
-        } catch (e) {
-          const errorText = await response.text();
-          console.error("Raw error response:", errorText);
-          errorMessage = `Server error: ${response.status}`;
-        }
-        throw new Error(errorMessage);
+      // Get history from localStorage
+      const historyData = localStorage.getItem(STORAGE_KEYS.HISTORY);
+      if (!historyData) {
+        return [];
       }
 
-      const data = await response.json();
-      console.log("Raw history data:", data);
+      const history = JSON.parse(historyData);
 
-      if (!Array.isArray(data)) {
-        console.error("Invalid data format:", data);
-        throw new Error("Invalid history data format from server");
+      if (!Array.isArray(history)) {
+        console.error("Invalid history data format in localStorage");
+        return [];
       }
 
       // Sort history by date (newest first)
-      const sortedData = data.sort(
-        (a, b) => new Date(b.date) - new Date(a.date)
-      );
-      console.log("Sorted history data:", sortedData);
-
-      return sortedData;
+      return sortHistory(history);
     } catch (error) {
       console.error("Error in getAllHistory:", error);
-      throw error;
+      return [];
     }
   },
 
@@ -110,21 +82,31 @@ const historyService = {
   addConversation: async (messages) => {
     try {
       const newConversation = createConversationEntry(messages);
+      const today = getToday();
 
-      const response = await fetch(`${API_BASE_URL}/api/history`, {
-        method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(newConversation),
-      });
+      // Get existing history
+      const historyData = localStorage.getItem(STORAGE_KEYS.HISTORY);
+      let history = [];
 
-      if (!response.ok) {
-        throw new Error("Failed to add conversation");
+      if (historyData) {
+        history = JSON.parse(historyData);
+        if (!Array.isArray(history)) {
+          history = [];
+        }
       }
 
+      // Find today's entry or create a new one
+      let todayEntry = history.find((entry) => entry.date === today);
+
+      if (!todayEntry) {
+        todayEntry = createDayEntry(newConversation);
+        history.push(todayEntry);
+      } else {
+        todayEntry.conversations.push(newConversation);
+      }
+
+      // Save updated history
+      localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(history));
       return true;
     } catch (error) {
       console.error("Error adding conversation:", error);
@@ -135,19 +117,7 @@ const historyService = {
   // Clear all history
   clearHistory: async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/history`, {
-        method: "DELETE",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to clear history");
-      }
-
+      localStorage.removeItem(STORAGE_KEYS.HISTORY);
       return true;
     } catch (error) {
       console.error("Error clearing history:", error);

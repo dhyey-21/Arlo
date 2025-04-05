@@ -9,27 +9,29 @@ const Navbar = ({
   isConnected,
 }) => {
   return (
-    <nav className="navbar">
+    <nav className="navbar" role="navigation" aria-label="Main navigation">
       <div className="navbar-left">
         <NavLink
-          to="/"
+          to="/home"
           className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}
+          aria-label="Home"
         >
-          <i className="mdi mdi-home"></i>
+          <i className="mdi mdi-home" aria-hidden="true"></i>
           <span>Home</span>
         </NavLink>
         <NavLink
           to="/history"
           className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}
+          aria-label="History"
         >
-          <i className="mdi mdi-history"></i>
+          <i className="mdi mdi-history" aria-hidden="true"></i>
           <span>History</span>
         </NavLink>
       </div>
 
       <div className="navbar-brand">
-        <NavLink to="/" className="navbar-logo">
-          <i className="mdi mdi-robot"></i>
+        <NavLink to="/home" className="navbar-logo" aria-label="Arlo Home">
+          <i className="mdi mdi-robot" aria-hidden="true"></i>
           <span>Arlo</span>
         </NavLink>
       </div>
@@ -38,16 +40,23 @@ const Navbar = ({
         <button
           onClick={isConnected ? handleDisconnect : handleConnect}
           className={`nav-link connect-btn ${isConnected ? "connected" : ""}`}
+          aria-label={isConnected ? "Disconnect from server" : "Connect to server"}
+          aria-pressed={isConnected}
         >
           <i
             className={`mdi ${
               isConnected ? "mdi-lan-disconnect" : "mdi-lan-connect"
             }`}
+            aria-hidden="true"
           ></i>
           <span>{isConnected ? "Disconnect" : "Connect"}</span>
         </button>
-        <button onClick={handleLogout} className="nav-link logout-btn">
-          <i className="mdi mdi-logout"></i>
+        <button 
+          onClick={handleLogout} 
+          className="nav-link logout-btn"
+          aria-label="Logout"
+        >
+          <i className="mdi mdi-logout" aria-hidden="true"></i>
           <span>Logout</span>
         </button>
       </div>

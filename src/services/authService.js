@@ -1,9 +1,12 @@
 import { toast } from "react-toastify";
 
-// In a real application, this would be your API endpoint
-const API_URL = "https://api.example.com/auth";
+// Local storage keys
+const STORAGE_KEYS = {
+  USER: "arlo_user",
+  MESSAGES: "arlo_messages",
+};
 
-// Simulated user database (in a real app, this would be in your backend)
+// Simulated user database (in memory)
 let users = [
   {
     email: "test@example.com",
@@ -15,8 +18,8 @@ export const authService = {
   async login(email, password) {
     try {
       console.log("Attempting login with:", email);
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Simulate API delay
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       const user = users.find(
         (u) => u.email === email && u.password === password
@@ -27,10 +30,14 @@ export const authService = {
         throw new Error("Invalid email or password");
       }
 
-      // In a real app, you would store a JWT token
-      localStorage.setItem("user", JSON.stringify({ email: user.email }));
+      // Store user in localStorage
+      const userData = {
+        email: user.email,
+        lastLogin: new Date().toISOString(),
+      };
+      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(userData));
       console.log("Login successful for:", email);
-      return { success: true, user: { email: user.email } };
+      return { success: true, user: userData };
     } catch (error) {
       console.error("Login error:", error);
       throw error;
@@ -40,8 +47,8 @@ export const authService = {
   async register(email, password) {
     try {
       console.log("Attempting registration with:", email);
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Simulate API delay
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       // Check if user already exists
       if (users.some((u) => u.email === email)) {
@@ -49,13 +56,14 @@ export const authService = {
         throw new Error("Email already registered");
       }
 
-      // In a real app, you would hash the password
+      // Add new user to memory
       users.push({ email, password });
       console.log("New user registered:", email);
 
-      // In a real app, you would store a JWT token
-      localStorage.setItem("user", JSON.stringify({ email }));
-      return { success: true, user: { email } };
+      // Store user in localStorage
+      const userData = { email, lastLogin: new Date().toISOString() };
+      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(userData));
+      return { success: true, user: userData };
     } catch (error) {
       console.error("Registration error:", error);
       throw error;
@@ -64,12 +72,35 @@ export const authService = {
 
   logout() {
     console.log("Logging out user");
-    localStorage.removeItem("user");
+    localStorage.removeItem(STORAGE_KEYS.USER);
+    // Keep messages in localStorage for persistence
+    // localStorage.removeItem(STORAGE_KEYS.MESSAGES);
   },
 
   getCurrentUser() {
-    const user = localStorage.getItem("user");
-    console.log("Current user:", user);
-    return user ? JSON.parse(user) : null;
+    try {
+      const userData = localStorage.getItem(STORAGE_KEYS.USER);
+      if (!userData) return null;
+
+      const user = JSON.parse(userData);
+
+      // Validate user data
+      if (!user || !user.email) {
+        console.error("Invalid user data in localStorage");
+        authService.logout();
+        return null;
+      }
+
+      return user;
+    } catch (error) {
+      console.error("Error getting current user:", error);
+      authService.logout();
+      return null;
+    }
+  },
+
+  isAuthenticated() {
+    const user = authService.getCurrentUser();
+    return !!user;
   },
 };

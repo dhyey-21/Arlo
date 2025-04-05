@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { toast } from "react-toastify";
-import ChatInterface from "../Components/ChatInterface";
-import ChatInput from "../Components/ChatInput";
+import ChatInterface from "../components/ChatInterface";
+import ChatInput from "../components/ChatInput";
+import { api } from "../services/api";
+import { useWebSocket } from "../hooks/useWebSocket";
 import historyService from "../services/historyService";
 import "../styles/MainPage.css";
 
@@ -25,6 +27,7 @@ function MainPage({
   isListening,
   setIsListening,
   isMuted,
+  setIsMuted,
   handleToggleMute,
   transcript,
   setTranscript,
@@ -38,35 +41,59 @@ function MainPage({
   morphing,
   setMorphing,
 }) {
-  const [messages, setMessages] = useState(() => {
-    // Initialize messages from localStorage if available
-    const savedMessages = localStorage.getItem("arlo_messages");
-    return savedMessages ? JSON.parse(savedMessages) : [];
-  });
+  const [messages, setMessages] = useState([]);
   const lastTranscriptRef = useRef("");
   const silenceTimeoutRef = useRef(null);
+  const audioContextRef = useRef(null);
+  const mediaStreamRef = useRef(null);
 
-  // Save messages to localStorage whenever they change
+  // Initialize WebSocket connection and handlers
+  const { startAudioStream, stopAudioStream, sendAudioChunk } = useWebSocket({
+    onAudioStart: () => {
+      setIsConnected(true);
+      setIsListening(true);
+      toast.success("Successfully connected! Agent is now listening.");
+    },
+    onAudioStop: () => {
+      setIsConnected(false);
+      setIsListening(false);
+      setIsMuted(false);
+      setTranscript("");
+      toast.info("Successfully disconnected");
+    },
+    onStateUpdate: (state) => {
+      console.log("State updated:", state);
+    },
+    onError: (error) => {
+      console.error("WebSocket error:", error);
+      toast.error(error.message || "Connection error occurred");
+    },
+  });
+
+  // Save messages to history service
   useEffect(() => {
-    localStorage.setItem("arlo_messages", JSON.stringify(messages));
+    let isSubscribed = true;
+    if (messages.length > 0 && isSubscribed) {
+      historyService.addConversation(messages);
+    }
+    return () => {
+      isSubscribed = false;
+    };
   }, [messages]);
 
   // Handle incoming transcripts
   useEffect(() => {
-    if (transcript && isConnected && !isMuted) {
-      // Clear any existing timeout
+    let isSubscribed = true;
+    if (transcript && isConnected && !isMuted && isSubscribed) {
       if (silenceTimeoutRef.current) {
         clearTimeout(silenceTimeoutRef.current);
       }
 
-      // Only process new transcripts (not the same as last time)
       if (transcript !== lastTranscriptRef.current) {
-        // Update the last transcript
         lastTranscriptRef.current = transcript;
 
-        // Set a new timeout to process the transcript after a period of silence
         silenceTimeoutRef.current = setTimeout(() => {
-          if (lastTranscriptRef.current === transcript) {
+          if (lastTranscriptRef.current === transcript && isSubscribed) {
             handleSendMessage(transcript);
             resetTranscript();
             lastTranscriptRef.current = "";
@@ -74,17 +101,118 @@ function MainPage({
         }, silenceDuration);
       }
     }
-  }, [transcript, isConnected, isMuted, silenceDuration]);
-
-  // Cleanup timeout and reset last transcript when muted
-  useEffect(() => {
-    if (isMuted) {
+    return () => {
+      isSubscribed = false;
       if (silenceTimeoutRef.current) {
         clearTimeout(silenceTimeoutRef.current);
       }
-      lastTranscriptRef.current = "";
+    };
+  }, [transcript, isConnected, isMuted, silenceDuration]);
+
+  // Cleanup audio resources
+  useEffect(() => {
+    return () => {
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+      }
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      }
+      if (silenceTimeoutRef.current) {
+        clearTimeout(silenceTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Initialize audio context and media stream
+  useEffect(() => {
+    if (isConnected && !isMuted) {
+      const initAudio = async () => {
+        try {
+          audioContextRef.current = new (window.AudioContext ||
+            window.webkitAudioContext)();
+          mediaStreamRef.current = await navigator.mediaDevices.getUserMedia({
+            audio: true,
+          });
+
+          const source = audioContextRef.current.createMediaStreamSource(
+            mediaStreamRef.current
+          );
+          const processor = audioContextRef.current.createScriptProcessor(
+            1024,
+            1,
+            1
+          );
+
+          source.connect(processor);
+          processor.connect(audioContextRef.current.destination);
+
+          processor.onaudioprocess = (e) => {
+            const inputData = e.inputBuffer.getChannelData(0);
+            sendAudioChunk(inputData);
+          };
+        } catch (error) {
+          console.error("Failed to initialize audio:", error);
+          toast.error("Failed to initialize audio");
+        }
+      };
+
+      initAudio();
     }
-  }, [isMuted]);
+
+    return () => {
+      // Cleanup media stream
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+        mediaStreamRef.current = null;
+      }
+
+      // Cleanup audio context
+      if (
+        audioContextRef.current &&
+        audioContextRef.current.state !== "closed"
+      ) {
+        try {
+          audioContextRef.current.close();
+        } catch (error) {
+          console.error("Error closing audio context:", error);
+        }
+        audioContextRef.current = null;
+      }
+    };
+  }, [isConnected, isMuted, sendAudioChunk]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      // Cleanup WebSocket connection
+      api.cleanup();
+
+      // Cleanup audio resources
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+        mediaStreamRef.current = null;
+      }
+
+      if (
+        audioContextRef.current &&
+        audioContextRef.current.state !== "closed"
+      ) {
+        try {
+          audioContextRef.current.close();
+        } catch (error) {
+          console.error("Error closing audio context:", error);
+        }
+        audioContextRef.current = null;
+      }
+
+      // Clear any pending timeouts
+      if (silenceTimeoutRef.current) {
+        clearTimeout(silenceTimeoutRef.current);
+        silenceTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   const handleSendMessage = async (text) => {
     if (!text?.trim()) return;
@@ -98,38 +226,45 @@ function MainPage({
       setMorphing(false);
     }, 500);
 
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    try {
+      // Send message to backend
+      const response = await api.chat.sendMessage(text);
+      const { text: responseText, audioUrl } = response;
 
-    // In test mode, use predefined responses
-    // Later, this will be replaced with actual backend API calls
-    const response = isTestMode
-      ? getTestResponse()
-      : "Backend response will go here";
-    const arloMessage = { text: response, sender: "Arlo", type: "assistant" };
-
-    const utterance = new SpeechSynthesisUtterance(response);
-    utterance.onstart = () => {
+      const arloMessage = {
+        text: responseText,
+        sender: "Arlo",
+        type: "assistant",
+      };
       setMessages((prev) => [...prev, arloMessage]);
-    };
 
-    utterance.onend = async () => {
+      // Play audio response
+      if (audioUrl) {
+        const audio = new Audio(audioUrl);
+        audio.onended = () => {
+          setMorphing(true);
+          setTimeout(() => {
+            setSpeaking(false);
+            setMorphing(false);
+          }, 500);
+        };
+        audio.play();
+      } else {
+        setMorphing(true);
+        setTimeout(() => {
+          setSpeaking(false);
+          setMorphing(false);
+        }, 500);
+      }
+    } catch (error) {
+      console.error("Failed to get response:", error);
+      toast.error("Failed to get response from Arlo");
       setMorphing(true);
       setTimeout(() => {
         setSpeaking(false);
         setMorphing(false);
       }, 500);
-
-      // Save the conversation to history
-      try {
-        const currentMessages = [...messages, userMessage, arloMessage];
-        await historyService.addConversation(currentMessages);
-      } catch (error) {
-        console.error("Error saving to history:", error);
-        toast.error("Failed to save conversation to history");
-      }
-    };
-
-    window.speechSynthesis.speak(utterance);
+    }
   };
 
   // Determine when to show wave animation

@@ -9,6 +9,8 @@ const AuthForm = ({ setLoggedIn }) => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -58,6 +60,8 @@ const AuthForm = ({ setLoggedIn }) => {
     setEmail("");
     setPassword("");
     setConfirmPassword("");
+    setShowPassword(false);
+    setShowConfirmPassword(false);
   };
 
   return (
@@ -84,26 +88,46 @@ const AuthForm = ({ setLoggedIn }) => {
           <div className="input-group">
             <i className="mdi mdi-lock"></i>
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
             />
+            <button
+              type="button"
+              className="toggle-password"
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              <i
+                className={`mdi ${showPassword ? "mdi-eye-off" : "mdi-eye"}`}
+              ></i>
+            </button>
           </div>
 
           {!isLogin && (
             <div className="input-group">
               <i className="mdi mdi-lock-check"></i>
               <input
-                type="password"
+                type={showConfirmPassword ? "text" : "password"}
                 placeholder="Confirm Password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 minLength={6}
               />
+              <button
+                type="button"
+                className="toggle-password"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              >
+                <i
+                  className={`mdi ${
+                    showConfirmPassword ? "mdi-eye-off" : "mdi-eye"
+                  }`}
+                ></i>
+              </button>
             </div>
           )}
 
