@@ -62,16 +62,11 @@
 }
 
 .history-content {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+  flex: 1;
   overflow-y: auto;
-  flex-grow: 1;
-  padding: 2rem 4rem;
+  padding: 1.5rem;
   position: relative;
   z-index: 1;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(0, 255, 157, 0.3) transparent;
   height: calc(100vh - 64px - 90px); /* Subtract header height */
 }
 
@@ -84,8 +79,12 @@
 }
 
 .history-content::-webkit-scrollbar-thumb {
-  background-color: rgba(0, 255, 157, 0.3);
-  border-radius: 20px;
+  background: rgba(233, 69, 96, 0.3);
+  border-radius: 4px;
+}
+
+.history-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(233, 69, 96, 0.5);
 }
 
 .history-day {
@@ -244,44 +243,44 @@
 .history-actions {
   display: flex;
   gap: 1rem;
+  padding: 2rem 4rem;
+  justify-content: center;
 }
 
-.clear-history,
-.export-history {
-  padding: 0.8rem 1.5rem;
-  border-radius: 25px;
-  border: none;
-  cursor: pointer;
+.history-actions button {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  padding: 0.8rem 1.5rem;
+  border: none;
+  border-radius: 8px;
   font-size: 1rem;
+  cursor: pointer;
   transition: all 0.3s ease;
-  font-weight: 500;
-}
-
-.clear-history {
-  background: rgba(255, 77, 77, 0.2);
-  color: #ff4d4d;
-  border: 1px solid rgba(255, 77, 77, 0.3);
-}
-
-.clear-history:hover {
-  background: rgba(255, 77, 77, 0.3);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(255, 77, 77, 0.2);
-}
-
-.export-history {
   background: rgba(0, 255, 157, 0.1);
   color: #00ff9d;
   border: 1px solid rgba(0, 255, 157, 0.2);
 }
 
-.export-history:hover {
+.history-actions button:hover {
   background: rgba(0, 255, 157, 0.2);
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 255, 157, 0.2);
+  box-shadow: 0 4px 10px rgba(0, 255, 157, 0.2);
+}
+
+.history-actions button i {
+  font-size: 1.2rem;
+}
+
+.history-actions .clear-history {
+  background: rgba(233, 69, 96, 0.1);
+  color: #e94560;
+  border: 1px solid rgba(233, 69, 96, 0.2);
+}
+
+.history-actions .clear-history:hover {
+  background: rgba(233, 69, 96, 0.2);
+  box-shadow: 0 4px 10px rgba(233, 69, 96, 0.2);
 }
 
 .loading-spinner {
@@ -316,37 +315,34 @@
 }
 
 .empty-history {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 500px;
-  gap: 1.5rem;
-  text-align: center;
-  padding: 2rem;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 15px;
-  border: 1px dashed rgba(0, 255, 157, 0.2);
-  margin: 2rem auto;
-  width: 90%;
-  max-width: 1200px;
+  gap: 1rem;
+  background: transparent;
+  margin: 0;
+  padding: 0;
+  border: none;
+  box-shadow: none;
 }
 
 .empty-history i {
-  font-size: 5rem;
-  color: rgba(0, 255, 157, 0.3);
-  margin-bottom: 1rem;
-}
-
-.empty-history p {
+  font-size: 3rem;
   color: #00ff9d;
-  font-size: 1.5rem;
   margin: 0;
 }
 
-.empty-history-subtitle {
-  color: #888;
-  font-size: 1.1rem;
-  max-width: 400px;
-  line-height: 1.5;
+.empty-history p {
+  color: #fff;
+  font-size: 1.25rem;
+  margin: 0;
+  font-weight: normal;
+}
+
+.empty-history .empty-history-subtitle {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 1rem;
+  margin: 0;
 }

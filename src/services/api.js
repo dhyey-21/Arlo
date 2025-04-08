@@ -59,26 +59,6 @@ const initSocket = () => {
   return socket;
 };
 
-// Audio streaming functions
-const audioService = {
-  startStream: () => {
-    const socket = initSocket();
-    socket.emit("audio:start");
-  },
-
-  stopStream: () => {
-    const socket = initSocket();
-    socket.emit("audio:stop");
-  },
-
-  sendAudioChunk: (chunk) => {
-    const socket = initSocket();
-    if (socket.connected) {
-      socket.emit("audio:chunk", chunk);
-    }
-  },
-};
-
 // Chat functions
 const chatService = {
   sendMessage: async (message) => {
@@ -117,20 +97,12 @@ const chatService = {
 const setupWebSocketHandlers = (callbacks) => {
   const socket = initSocket();
 
-  // Audio events
-  socket.on("audio:start", callbacks.onAudioStart);
-  socket.on("audio:stop", callbacks.onAudioStop);
-  socket.on("audio:chunk", callbacks.onAudioChunk);
-
   // State events
   socket.on("state:update", callbacks.onStateUpdate);
   socket.on("error", callbacks.onError);
 
   // Cleanup function
   return () => {
-    socket.off("audio:start");
-    socket.off("audio:stop");
-    socket.off("audio:chunk");
     socket.off("state:update");
     socket.off("error");
   };
@@ -152,7 +124,6 @@ export const api = {
   client,
   initSocket,
   cleanup,
-  audio: audioService,
   chat: chatService,
   setupWebSocketHandlers,
 };

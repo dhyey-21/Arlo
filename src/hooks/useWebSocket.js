@@ -1,114 +1,63 @@
-import { useEffect, useCallback, useState } from "react";
-import { api } from "../services/api";
-import { toast } from "react-toastify";
+import { useEffect, useCallback, useRef } from "react";
+import io from "socket.io-client";
+import config from "../config/config";
 
-export const useWebSocket = ({
-  onAudioStart,
-  onAudioStop,
-  onAudioChunk,
-  onStateUpdate,
-  onError,
-}) => {
-  const [isConnected, setIsConnected] = useState(false);
-  const [error, setError] = useState(null);
+export const useWebSocket = ({ onStateUpdate, onMessage, onError }) => {
+  const socketRef = useRef(null);
 
-  // Initialize WebSocket connection
-  useEffect(() => {
+  const connect = useCallback(() => {
     try {
-      const socket = api.initSocket();
-      setIsConnected(socket?.connected || false);
-    } catch (err) {
-      console.error("Failed to initialize WebSocket:", err);
-      setError(err);
-      toast.error("Failed to connect to server");
+      socketRef.current = io(config.api.wsUrl, {
+        transports: ["websocket"],
+        reconnection: true,
+        reconnectionAttempts: config.websocket.reconnectAttempts,
+        reconnectionDelay: config.websocket.reconnectInterval,
+      });
+
+      socketRef.current.on("connect", () => {
+        onStateUpdate({ connected: true });
+      });
+
+      socketRef.current.on("disconnect", () => {
+        onStateUpdate({ connected: false });
+      });
+
+      socketRef.current.on("error", (error) => {
+        onError(error);
+      });
+
+      // Handle STT responses
+      socketRef.current.on("transcript", (data) => {
+        onMessage({ type: "transcript", text: data.text });
+      });
+
+      // Handle TTS responses
+      socketRef.current.on("response", (data) => {
+        onMessage({ type: "response", text: data.text });
+      });
+    } catch (error) {
+      onError(error);
+    }
+  }, [onStateUpdate, onMessage, onError]);
+
+  const disconnect = useCallback(() => {
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+      socketRef.current = null;
     }
   }, []);
 
-  // Setup event handlers
-  useEffect(() => {
-    const cleanup = api.setupWebSocketHandlers({
-      onAudioStart: () => {
-        console.log("Audio stream started");
-        setIsConnected(true);
-        onAudioStart?.();
-      },
-      onAudioStop: () => {
-        console.log("Audio stream stopped");
-        setIsConnected(false);
-        onAudioStop?.();
-      },
-      onAudioChunk: (chunk) => {
-        if (!isConnected) {
-          console.warn("Received audio chunk while disconnected");
-          return;
-        }
-        onAudioChunk?.(chunk);
-      },
-      onStateUpdate: (state) => {
-        console.log("State updated:", state);
-        onStateUpdate?.(state);
-      },
-      onError: (error) => {
-        console.error("WebSocket error:", error);
-        setError(error);
-        toast.error(error.message || "Connection error occurred");
-        onError?.(error);
-      },
-    });
-
-    return cleanup;
-  }, [
-    onAudioStart,
-    onAudioStop,
-    onAudioChunk,
-    onStateUpdate,
-    onError,
-    isConnected,
-  ]);
-
-  // Audio control functions
-  const startAudioStream = useCallback(() => {
-    if (!isConnected) {
-      toast.error("Not connected to server");
-      return;
-    }
-    try {
-      api.audio.startStream();
-    } catch (error) {
-      console.error("Failed to start audio stream:", error);
-      toast.error("Failed to start audio stream");
-    }
-  }, [isConnected]);
-
-  const stopAudioStream = useCallback(() => {
-    try {
-      api.audio.stopStream();
-    } catch (error) {
-      console.error("Failed to stop audio stream:", error);
-      toast.error("Failed to stop audio stream");
+  const sendMessage = useCallback((message) => {
+    if (socketRef.current && socketRef.current.connected) {
+      socketRef.current.emit("message", message);
     }
   }, []);
 
-  const sendAudioChunk = useCallback(
-    (chunk) => {
-      if (!isConnected) {
-        console.warn("Attempted to send audio chunk while disconnected");
-        return;
-      }
-      try {
-        api.audio.sendAudioChunk(chunk);
-      } catch (error) {
-        console.error("Failed to send audio chunk:", error);
-      }
-    },
-    [isConnected]
-  );
+  useEffect(() => {
+    return () => {
+      disconnect();
+    };
+  }, [disconnect]);
 
-  return {
-    startAudioStream,
-    stopAudioStream,
-    sendAudioChunk,
-    isConnected,
-    error,
-  };
+  return { connect, disconnect, sendMessage };
 };

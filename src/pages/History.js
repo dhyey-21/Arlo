@@ -36,23 +36,16 @@ const History = () => {
   const loadHistory = async () => {
     try {
       setIsLoading(true);
-      console.log("Fetching history...");
       const data = await historyService.getAllHistory();
-      console.log("Received history data:", data);
-
       if (!Array.isArray(data)) {
         throw new Error("Invalid history data format");
       }
-
-      if (data.length === 0) {
-        console.log("No history data available");
-      }
-
       setHistory(data);
       setShouldScroll(true);
     } catch (error) {
       console.error("Error loading history:", error);
-      toast.error(`Failed to load history: ${error.message}`);
+      setHistory([]);
+      toast.error("Failed to load conversation history");
     } finally {
       setIsLoading(false);
     }
@@ -60,14 +53,10 @@ const History = () => {
 
   const handleClearHistory = async () => {
     try {
-      const success = await historyService.clearHistory();
-      if (success) {
-        setHistory([]);
-        setSelectedDate(null);
-        toast.success("History cleared successfully");
-      } else {
-        toast.error("Failed to clear history");
-      }
+      await historyService.clearHistory();
+      setHistory([]);
+      setSelectedDate(null);
+      toast.success("History cleared successfully");
     } catch (error) {
       console.error("Error clearing history:", error);
       toast.error("Failed to clear history");
@@ -76,10 +65,7 @@ const History = () => {
 
   const handleExportHistory = async () => {
     try {
-      const success = await historyService.exportHistory();
-      if (!success) {
-        toast.error("Failed to export history");
-      }
+      await historyService.exportHistory();
     } catch (error) {
       console.error("Error exporting history:", error);
       toast.error("Failed to export history");
@@ -98,7 +84,6 @@ const History = () => {
 
   const handleDateClick = (date) => {
     setSelectedDate(selectedDate === date ? null : date);
-    // Don't scroll when expanding/collapsing dates
     setShouldScroll(false);
   };
 

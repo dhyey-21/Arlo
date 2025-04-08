@@ -1,4 +1,5 @@
 import React from "react";
+import { FaMicrophone, FaMicrophoneSlash } from "react-icons/fa";
 import "../styles/ChatInput.css";
 
 const ChatInput = ({
@@ -6,21 +7,19 @@ const ChatInput = ({
   isSupported,
   isListening,
   toggleListening,
-  isConnected,
+  isConnected
 }) => {
   return (
     <div className="chat-input-container">
-      {isSupported && (
-        <button
-          onClick={toggleListening}
-          disabled={!isConnected || speaking}
-          className={`mic-button ${isListening ? "active" : ""} ${
-            !isConnected ? "disabled" : ""
-          }`}
-        >
-          <i className={`mdi ${isListening ? 'mdi-microphone' : 'mdi-microphone-off'}`}></i>
-        </button>
-      )}
+      <button
+        onClick={toggleListening}
+        disabled={!isConnected || speaking}
+        className={`mic-button ${isListening ? "active" : ""} ${
+          !isConnected ? "disabled" : ""
+        }`}
+      >
+        {isListening ? <FaMicrophone /> : <FaMicrophoneSlash />}
+      </button>
     </div>
   );
 };

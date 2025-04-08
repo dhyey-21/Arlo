@@ -2,25 +2,21 @@ import { toast } from "react-toastify";
 
 // Error codes from backend
 const ERROR_CODES = {
-  AUDIO_ERROR: 1001,
-  STT_ERROR: 1002,
-  TTS_ERROR: 1003,
-  WAKE_WORD_ERROR: 1004,
-  LLM_ERROR: 1005,
-  FUNCTION_ERROR: 1006,
-  CONFIG_ERROR: 1007,
-  STATE_ERROR: 1008,
-  EVENT_BUS_ERROR: 1009,
+  CONNECTION_ERROR: 1001,
+  API_ERROR: 1002,
+  AUTH_ERROR: 1003,
+  FUNCTION_ERROR: 1004,
+  CONFIG_ERROR: 1005,
+  STATE_ERROR: 1006,
+  EVENT_BUS_ERROR: 1007,
   UNKNOWN_ERROR: 9999,
 };
 
 // Error messages mapping
 const ERROR_MESSAGES = {
-  [ERROR_CODES.AUDIO_ERROR]: "Audio processing error. Please try again.",
-  [ERROR_CODES.STT_ERROR]: "Speech recognition failed. Please speak clearly.",
-  [ERROR_CODES.TTS_ERROR]: "Text-to-speech error. Please try again.",
-  [ERROR_CODES.WAKE_WORD_ERROR]: "Wake word detection error. Please try again.",
-  [ERROR_CODES.LLM_ERROR]: "AI processing error. Please try again.",
+  [ERROR_CODES.CONNECTION_ERROR]: "Connection error. Please try again.",
+  [ERROR_CODES.API_ERROR]: "API error. Please try again.",
+  [ERROR_CODES.AUTH_ERROR]: "Authentication error. Please log in again.",
   [ERROR_CODES.FUNCTION_ERROR]: "Function execution error. Please try again.",
   [ERROR_CODES.CONFIG_ERROR]: "Configuration error. Please contact support.",
   [ERROR_CODES.STATE_ERROR]: "State management error. Please refresh the page.",

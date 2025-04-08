@@ -1,4 +1,4 @@
-.main-content {
+.main-page {
   display: flex;
   flex-direction: column;
   height: calc(100vh - 64px); /* Account for the main navbar */
@@ -13,11 +13,9 @@
 
 /* Chat interface styles */
 .chat-interface {
-  position: absolute;
-  top: 63%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  position: relative;
   width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -29,6 +27,7 @@
   gap: 18px;
   padding: 20px;
   max-width: 800px;
+  width: 100%;
   margin: 0 auto;
   height: calc(100vh - 200px);
   overflow-y: auto;
@@ -127,6 +126,7 @@
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.3s ease;
+  z-index: 10;
 }
 
 .electric-bubble.active {
@@ -144,5 +144,14 @@
   100% {
     box-shadow: 0 0 0 0 rgba(0, 255, 157, 0);
   }
+}
+
+/* Remove microphone button styles */
+.chat-input-container,
+.mic-button,
+.mic-button:hover,
+.mic-button.active,
+.mic-button.disabled {
+  display: none;
 }
 

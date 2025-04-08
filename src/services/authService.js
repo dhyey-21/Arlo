@@ -12,6 +12,10 @@ let users = [
     email: "test@example.com",
     password: "password123", // In a real app, this would be hashed
   },
+  {
+    email: "dhyeydevloper@arlo.com",
+    password: "123456",
+  }
 ];
 
 export const authService = {

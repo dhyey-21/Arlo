@@ -2,12 +2,7 @@ import React from "react";
 import { NavLink } from "react-router-dom";
 import "../styles/Navbar.css";
 
-const Navbar = ({
-  handleLogout,
-  handleConnect,
-  handleDisconnect,
-  isConnected,
-}) => {
+const Navbar = ({ handleLogout }) => {
   return (
     <nav className="navbar" role="navigation" aria-label="Main navigation">
       <div className="navbar-left">
@@ -38,21 +33,7 @@ const Navbar = ({
 
       <div className="navbar-right">
         <button
-          onClick={isConnected ? handleDisconnect : handleConnect}
-          className={`nav-link connect-btn ${isConnected ? "connected" : ""}`}
-          aria-label={isConnected ? "Disconnect from server" : "Connect to server"}
-          aria-pressed={isConnected}
-        >
-          <i
-            className={`mdi ${
-              isConnected ? "mdi-lan-disconnect" : "mdi-lan-connect"
-            }`}
-            aria-hidden="true"
-          ></i>
-          <span>{isConnected ? "Disconnect" : "Connect"}</span>
-        </button>
-        <button 
-          onClick={handleLogout} 
+          onClick={handleLogout}
           className="nav-link logout-btn"
           aria-label="Logout"
         >

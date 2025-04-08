@@ -83,28 +83,6 @@
   color: #00ff9d;
 }
 
-.connect-btn {
-  background: #00ff9d;
-  color: #000;
-  font-weight: 500;
-}
-
-.connect-btn:hover {
-  background: #00cc7d;
-  color: #000;
-  transform: translateY(-2px);
-}
-
-.connect-btn.connected {
-  background: #ff4253;
-  color: #fff;
-}
-
-.connect-btn.connected:hover {
-  background: #cc3442;
-  color: #fff;
-}
-
 .logout-btn {
   background: rgba(255, 59, 59, 0.1);
   border: none;
@@ -143,4 +121,12 @@
   .navbar-logo span {
     display: none;
   }
+}
+
+/* Remove connect button styles */
+.connect-btn,
+.connect-btn:hover,
+.connect-btn.connected,
+.connect-btn.connected:hover {
+  display: none;
 } 
