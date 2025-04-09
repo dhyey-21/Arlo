@@ -13,7 +13,7 @@ let users = [
     password: "password123", // In a real app, this would be hashed
   },
   {
-    email: "dhyeydevloper@arlo.com",
+    email: "dhyey.dev@arlo.com",
     password: "123456",
   }
 ];

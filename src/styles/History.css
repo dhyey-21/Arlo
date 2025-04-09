@@ -1,12 +1,28 @@
-.history-container {
-  padding: 0;
-  width: 100%;
-  margin: 0;
-  min-height: calc(100vh - 64px);
-  background: #14151a;
+.history-page {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  background-color: var(--bg-color);
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+}
+
+.history-container {
+  flex: 1;
+  padding: 10px 20px;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  overflow-y: auto;
+  height: calc(100vh - 60px); /* Subtract navbar height */
+  scroll-behavior: smooth;
+  background: #14151a;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   position: relative;
   box-sizing: border-box;
@@ -184,13 +200,44 @@
   gap: 1.2rem;
 }
 
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulseGlow {
+  0% {
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  }
+  50% {
+    box-shadow: 0 2px 15px rgba(var(--primary-rgb), 0.2);
+  }
+  100% {
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  }
+}
+
 .message {
-  padding: 1.2rem;
-  border-radius: 12px;
-  max-width: 85%;
+  margin: 8px 0;
+  padding: 10px 15px;
+  border-radius: 8px;
+  max-width: 80%;
+  line-height: 1.5;
+  font-size: 1.05em;
   position: relative;
-  animation: fadeIn 0.3s ease;
+  animation: slideIn 0.3s ease-out;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.message:hover {
+  animation: pulseGlow 2s infinite;
 }
 
 @keyframes fadeIn {

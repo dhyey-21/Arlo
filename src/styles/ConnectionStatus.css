@@ -1,0 +1,105 @@
+@keyframes glow {
+  0% {
+    box-shadow: 0 0 5px var(--glow-color);
+  }
+  50% {
+    box-shadow: 0 0 15px var(--glow-color);
+  }
+  100% {
+    box-shadow: 0 0 5px var(--glow-color);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+}
+
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  background: rgba(20, 21, 26, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.status-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.status-dot::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.status-dot::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  opacity: 0;
+  transition: all 0.3s ease;
+}
+
+.status-dot.connected {
+  background-color: #00ff9d;
+  --glow-color: rgba(0, 255, 157, 0.5);
+  animation: glow 2s ease-in-out infinite;
+}
+
+.status-dot.connected::after {
+  background-color: #00ff9d;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.status-dot.disconnected {
+  background-color: #ff4d4d;
+  --glow-color: rgba(255, 77, 77, 0.5);
+  animation: glow 2s ease-in-out infinite;
+}
+
+.status-dot.disconnected::after {
+  background-color: #ff4d4d;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.status-dot.loading {
+  background-color: #ffb700;
+  --glow-color: rgba(255, 183, 0, 0.5);
+  animation: glow 1s ease-in-out infinite;
+}
+
+.status-dot.loading::after {
+  background-color: #ffb700;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+.status-text {
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 14px;
+  font-weight: 500;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  letter-spacing: 0.2px;
+}

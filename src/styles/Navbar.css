@@ -122,11 +122,3 @@
     display: none;
   }
 }
-
-/* Remove connect button styles */
-.connect-btn,
-.connect-btn:hover,
-.connect-btn.connected,
-.connect-btn.connected:hover {
-  display: none;
-} 

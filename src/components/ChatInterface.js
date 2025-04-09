@@ -1,41 +1,45 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import PropTypes from "prop-types";
+import "../styles/ChatInterface.css";
 
-const ChatInterface = ({ messages, speaking, isListening }) => {
-  // Get only the most recent message pair
-  const getRecentMessagePair = () => {
-    const recentMessages = [];
-    if (messages.length > 0) {
-      // Get the last message
-      const lastMessage = messages[messages.length - 1];
-      // If it's an assistant message, show it with its corresponding user message
-      if (lastMessage.type === "assistant" && messages.length > 1) {
-        recentMessages.push(messages[messages.length - 2]); // User message
-        recentMessages.push(lastMessage); // Assistant response
-      } else {
-        // If it's a user message, just show that
-        recentMessages.push(lastMessage);
-      }
+const ChatInterface = ({ messages, isResponding, isListening }) => {
+  const messagesEndRef = useRef(null);
+
+  const scrollToBottom = () => {
+    if (messagesEndRef.current) {
+      const container = messagesEndRef.current.parentElement;
+      container.scrollTop = container.scrollHeight;
     }
-    return recentMessages;
   };
 
-  const recentMessages = getRecentMessagePair();
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+  const getMessageClass = (message) => {
+    let classes = `message ${message.type}`;
+    if (message.type === "assistant" && isResponding) {
+      classes += " responding";
+    }
+    return classes;
+  };
 
   return (
     <div className="chat-interface">
+      <div className={`wave-container ${isListening ? 'active' : ''}`}>
+        <div className="wave wave1"></div>
+        <div className="wave wave2"></div>
+        <div className="wave wave3"></div>
+      </div>
+
       <div className="messages-container">
-        {recentMessages.map((message, index) => (
-          <div key={index} className={`message-wrapper ${message.type}`}>
-            <div
-              className={`message ${
-                message.type === "user" ? "user-message" : "assistant-message"
-              } ${speaking && message.type === "user" ? "fade-up" : ""}`}
-            >
+        {messages.map((message, index) => (
+          <div key={index} className="message-wrapper">
+            <div className={getMessageClass(message)}>
               {message.text}
             </div>
           </div>
         ))}
+        <div ref={messagesEndRef} />
       </div>
     </div>
   );
@@ -44,16 +48,16 @@ const ChatInterface = ({ messages, speaking, isListening }) => {
 ChatInterface.propTypes = {
   messages: PropTypes.arrayOf(
     PropTypes.shape({
-      type: PropTypes.oneOf(["user", "assistant"]).isRequired,
+      type: PropTypes.string.isRequired,
       text: PropTypes.string.isRequired,
     })
   ).isRequired,
-  speaking: PropTypes.bool,
+  isResponding: PropTypes.bool,
   isListening: PropTypes.bool,
 };
 
 ChatInterface.defaultProps = {
-  speaking: false,
+  isResponding: false,
   isListening: false,
 };
 

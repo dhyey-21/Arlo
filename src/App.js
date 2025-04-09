@@ -6,20 +6,16 @@ import MainPage from "./pages/MainPage";
 import History from "./pages/History";
 import Navbar from "./components/Navbar";
 import ErrorBoundary from "./components/ErrorBoundary";
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Navigate,
-  useLocation,
-} from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import { authService } from "./services/authService";
+import AnimationTest from './components/AnimationTest';
+import AnimationEffectsTest from "./components/AnimationEffectsTest";
+import MessageTest from './components/MessageTest';
 
 // Wrapper component to handle location changes
 const AppContent = () => {
-  const location = useLocation();
   const [loggedIn, setLoggedIn] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
 
@@ -84,10 +80,13 @@ const AppContent = () => {
             )
           }
         />
+        <Route path="/test" element={<AnimationTest />} />
         <Route
           path="/history"
           element={loggedIn ? <History /> : <Navigate to="/" replace />}
         />
+        <Route path="/effects" element={<AnimationEffectsTest />} />
+        <Route path="/message-test" element={<MessageTest />} />
       </Routes>
     </div>
   );
