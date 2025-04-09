@@ -1,17 +1,22 @@
 const config = {
   // Backend Configuration
   backend: {
-    apiUrl: process.env.REACT_APP_API_URL || 'http://localhost:8000',
-    wsUrl: process.env.REACT_APP_WS_URL || 'ws://localhost:8000/ws',
-    reconnectAttempts: 5,
-    reconnectDelay: 2000,
+    baseUrl: 'http://localhost:8000',
+    wsUrl: 'ws://localhost:8000/ws',
     healthEndpoint: '/health',
+    reconnectAttempts: 5,
+    reconnectDelay: 3000,
   },
   // API Configuration
   api: {
-    baseUrl: process.env.REACT_APP_API_URL || "http://localhost:3000",
-    wsUrl: process.env.REACT_APP_WS_URL || "http://localhost:3000",
+    baseUrl: process.env.REACT_APP_API_URL || 'http://localhost:8000',
+    wsUrl: process.env.REACT_APP_WS_URL || 'ws://localhost:8000/ws',
     timeout: 30000, // 30 seconds
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    },
+    withCredentials: true, // Important for CORS with credentials
   },
 
   // WebSocket Configuration

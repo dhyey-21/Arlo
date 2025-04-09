@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "react-toastify";
 import ChatInterface from "../components/ChatInterface";
 import ConnectionStatus from "../components/ConnectionStatus";
 import { assistantService } from "../services/assistantService";
+import { websocketService } from "../services/websocketService";
 import "../styles/MainPage.css";
 
 const MainPage = ({ setLoggedIn }) => {
@@ -10,116 +11,120 @@ const MainPage = ({ setLoggedIn }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isResponding, setIsResponding] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const socketRef = useRef(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const lastToastId = useRef(null);
+  const lastConnectionState = useRef(false);
 
-  // Toast configuration
-  const toastConfig = {
-    autoClose: 5000, // 5 seconds
-    closeOnClick: true,
-    pauseOnHover: true,
-    draggable: true
-  };
-
-  let toastId = null;
-  const showToast = (message, type = 'info') => {
-    if (toastId) {
-      toast.dismiss(toastId);
+  const showToast = useCallback((message, type = 'info') => {
+    // Dismiss previous toast if it exists
+    if (lastToastId.current) {
+      toast.dismiss(lastToastId.current);
     }
-    toastId = toast[type](message, toastConfig);
-  };
+    lastToastId.current = toast[type](message, {
+      position: "top-right",
+      autoClose: 5000,
+      hideProgressBar: false,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: true,
+      progress: undefined,
+    });
+  }, []);
 
   useEffect(() => {
-    let isInitialConnection = true;
-    let retryTimeout = null;
+    let healthCheckInterval;
     let isCleanedUp = false;
 
-    const setupAssistant = async () => {
+    const setupConnection = async () => {
       if (isCleanedUp) return;
+      
       try {
-        setIsLoading(true);
-        // Check initial connection
+        // Initial health check
         const isHealthy = await assistantService.getStatus();
-        setIsConnected(isHealthy);
+        if (!isHealthy) {
+          setIsConnected(false);
+          showToast('Unable to connect to server', 'error');
+          return;
+        }
 
-        socketRef.current = assistantService.connect();
+        // Setup WebSocket
+        websocketService.addConnectionListener((connected) => {
+          setIsConnected(connected);
+          setIsLoading(false);
+          
+          // Only show connection status toast if state has changed
+          if (connected !== lastConnectionState.current) {
+            lastConnectionState.current = connected;
+            if (connected) {
+              showToast('Connected to server', 'success');
+              setIsListening(true); // Start listening when connected
+            } else {
+              showToast('Disconnected from server', 'warning');
+              setIsListening(false); // Stop listening when disconnected
+            }
+          }
+        });
 
-        socketRef.current.on("listening", () => {
+        // Setup message handlers
+        websocketService.addMessageHandler('listening', () => {
           setIsListening(true);
           setIsResponding(false);
         });
 
-        socketRef.current.on("connect", () => {
-          setIsConnected(true);
-          setIsLoading(false);
-          setIsListening(true); // Start listening after connection
-          setIsResponding(false);
-          if (!isInitialConnection) {
-            showToast('Reconnected to assistant', 'success');
-          }
-          isInitialConnection = false;
-        });
-
-        socketRef.current.on("disconnect", () => {
-          setIsConnected(false);
-          setIsListening(false);
-          setIsResponding(false);
-          setIsLoading(false);
-          showToast('Disconnected from assistant. Attempting to reconnect...', 'warning');
-        });
-
-        socketRef.current.on("message", (message) => {
-          setMessages(prev => [...prev, { type: 'user', text: message }]);
-          // Keep the current state until response
-        });
-
-        socketRef.current.on("responding", () => {
+        websocketService.addMessageHandler('responding', () => {
           setIsListening(false);
           setIsResponding(true);
         });
 
-        socketRef.current.on("response_complete", () => {
+        websocketService.addMessageHandler('response_complete', () => {
           setIsResponding(false);
-          setIsListening(true); // Start listening again after response
+          setIsListening(true);
         });
 
-        socketRef.current.on("error", (error) => {
+        // Connect WebSocket
+        websocketService.connect();
+
+        // Setup periodic health checks (every 10 seconds)
+        healthCheckInterval = setInterval(async () => {
           if (isCleanedUp) return;
-          setIsListening(false);
-          setIsResponding(false);
-          // Only show error toast if not already showing connection error
-          if (!error.message?.includes('connect')) {
-            showToast(error.message || 'Connection error. Please try again.', 'error');
+          try {
+            const isHealthy = await assistantService.getStatus();
+            if (!isHealthy && isConnected) {
+              setIsConnected(false);
+              setIsListening(false);
+              // Only show disconnection toast if state has changed
+              if (lastConnectionState.current) {
+                lastConnectionState.current = false;
+                showToast('Lost connection to server', 'error');
+              }
+            }
+          } catch (error) {
+            console.error('Health check failed:', error);
           }
-        });
+        }, 10000);
+
       } catch (error) {
-        if (isCleanedUp) return;
-        setIsLoading(false);
+        console.error('Setup failed:', error);
         setIsConnected(false);
-        showToast('Failed to connect to assistant. Retrying...', 'error');
-        // Retry connection after 5 seconds
-        if (retryTimeout) clearTimeout(retryTimeout);
-        retryTimeout = setTimeout(() => {
-          if (!isCleanedUp) setupAssistant();
-        }, 5000);
+        setIsLoading(false);
+        setIsListening(false);
+        showToast('Failed to connect to server', 'error');
       }
     };
 
-    setupAssistant();
+    setupConnection();
 
     return () => {
       isCleanedUp = true;
-      if (retryTimeout) clearTimeout(retryTimeout);
-      if (toastId) toast.dismiss(toastId);
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-        socketRef.current.removeAllListeners();
+      if (healthCheckInterval) {
+        clearInterval(healthCheckInterval);
       }
-      if (assistantService && typeof assistantService.cleanup === 'function') {
-        assistantService.cleanup();
+      if (lastToastId.current) {
+        toast.dismiss(lastToastId.current);
       }
+      websocketService.disconnect();
     };
-  }, []);
+  }, [showToast]);
 
   return (
     <div className="main-page">
@@ -133,6 +138,7 @@ const MainPage = ({ setLoggedIn }) => {
       <div className="chat-container">
         <ChatInterface 
           messages={messages} 
+          isListening={isListening}
           isResponding={isResponding}
         />
       </div>

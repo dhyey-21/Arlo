@@ -7,145 +7,162 @@ class WebSocketService {
     this.isConnected = false;
     this.messageHandlers = new Map();
     this.reconnectAttempts = 0;
-    this.maxReconnectAttempts = 5;
-    this.reconnectDelay = 2000;
+    this.maxReconnectAttempts = config.backend.reconnectAttempts || 5;
+    this.reconnectDelay = config.backend.reconnectDelay || 3000;
+    this.connectionListeners = new Set();
+    console.log('WebSocket service initialized with config:', {
+      wsUrl: config.backend.wsUrl,
+      maxReconnectAttempts: this.maxReconnectAttempts,
+      reconnectDelay: this.reconnectDelay
+    });
   }
 
   connect() {
     if (this.socket) {
+      console.log('WebSocket already exists, not creating new connection');
       return;
     }
 
-    this.socket = new WebSocket(config.backend.wsUrl);
+    try {
+      console.log('Connecting to WebSocket at:', config.backend.wsUrl);
+      this.socket = new WebSocket(config.backend.wsUrl);
 
-    this.socket.onopen = () => {
-      console.log('WebSocket connected');
-      this.isConnected = true;
-      this.reconnectAttempts = 0;
-      this.notifyHandlers('connection', { status: 'connected' });
-    };
+      this.socket.onopen = () => {
+        console.log('WebSocket connection opened');
+        this.isConnected = true;
+        this.reconnectAttempts = 0;
+        this.notifyConnectionChange(true);
 
-    this.socket.onclose = () => {
-      console.log('WebSocket disconnected');
-      this.isConnected = false;
-      this.socket = null;
-      this.notifyHandlers('connection', { status: 'disconnected' });
-      this.tryReconnect();
-    };
+        // Send initial message to confirm connection
+        this.send({ type: 'connection_check' });
+      };
 
-    this.socket.onerror = (error) => {
-      console.error('WebSocket error:', error);
-      this.notifyHandlers('error', { error });
-    };
+      this.socket.onclose = (event) => {
+        console.log('WebSocket closed:', {
+          code: event.code,
+          reason: event.reason,
+          wasClean: event.wasClean
+        });
+        this.isConnected = false;
+        this.notifyConnectionChange(false);
+        this.socket = null;
 
-    this.socket.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data);
-        if (message.type === 'transcription') {
-          this.notifyHandlers('message', message.data);
-        } else if (message.type === 'response') {
-          this.notifyHandlers('response', message.data);
-        } else {
-          console.log('Unknown message type:', message.type);
+        // Don't reconnect on normal closure or if max attempts reached
+        if (event.code !== 1000 && event.code !== 1001 && this.reconnectAttempts < this.maxReconnectAttempts) {
+          this.scheduleReconnect();
         }
-      } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
-        this.notifyHandlers('error', { message: 'Failed to parse message' });
-      }
-    };
-  }
+      };
 
-  setupEventListeners(handlers) {
-    if (handlers.onConnect) {
-      this.messageHandlers.set('connect', handlers.onConnect);
-    }
-    if (handlers.onDisconnect) {
-      this.messageHandlers.set('disconnect', handlers.onDisconnect);
-    }
-    if (handlers.onMessage) {
-      this.messageHandlers.set('message', handlers.onMessage);
-    }
-    if (handlers.onError) {
-      this.messageHandlers.set('error', handlers.onError);
-    }
+      this.socket.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        this.notifyConnectionChange(false);
+      };
 
-    // Start connection after setting up handlers
-    this.connect();
+      this.socket.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          console.log('WebSocket received message:', message);
+          
+          // Handle state messages
+          switch (message.type) {
+            case 'listening':
+            case 'responding':
+            case 'response_complete':
+              console.log('Handling state message:', message.type);
+              const handler = this.messageHandlers.get(message.type);
+              if (handler) {
+                handler(message.data);
+              } else {
+                console.log('No handler found for message type:', message.type);
+              }
+              break;
+            case 'transcription':
+            case 'response':
+              console.log('Handling data message:', message.type);
+              const dataHandler = this.messageHandlers.get(message.type);
+              if (dataHandler) {
+                dataHandler(message.data);
+              } else {
+                console.log('No handler found for message type:', message.type);
+              }
+              break;
+            default:
+              console.log('Unknown message type:', message.type);
+          }
+        } catch (error) {
+          console.error('Error processing message:', error, 'Raw message:', event.data);
+        }
+      };
+    } catch (error) {
+      console.error('Error creating WebSocket:', error);
+      this.scheduleReconnect();
+    }
   }
 
   disconnect() {
     if (this.socket) {
-      this.socket.close();
+      console.log('Disconnecting WebSocket');
+      this.socket.close(1000, 'Normal closure');
       this.socket = null;
       this.isConnected = false;
+      this.notifyConnectionChange(false);
     }
   }
 
-  tryReconnect() {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('Max reconnection attempts reached');
-      this.notifyHandlers('error', { message: 'Failed to reconnect to server' });
-      return;
-    }
-
-    this.reconnectAttempts++;
-    console.log(`Reconnecting... Attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
-    
-    setTimeout(() => {
-      if (!this.isConnected) {
-        this.connect();
+  send(message) {
+    if (this.socket && this.isConnected) {
+      try {
+        const messageStr = JSON.stringify(message);
+        console.log('Sending WebSocket message:', messageStr);
+        this.socket.send(messageStr);
+        return true;
+      } catch (error) {
+        console.error('Error sending message:', error);
+        return false;
       }
-    }, this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1)); // Exponential backoff
+    }
+    console.log('Cannot send message, socket not connected');
+    return false;
   }
 
-  handleMessage(message) {
-    // Handle different message types from the backend
-    switch (message.type) {
-      case 'response':
-        this.notifyHandlers('response', message.data);
-        break;
-      case 'transcription':
-        this.notifyHandlers('transcription', message.data);
-        break;
-      default:
-        if (message.message === 'Connected') {
-          this.notifyHandlers('connection', { status: 'connected' });
-        }
-        console.log('Received message:', message);
-    }
+  scheduleReconnect() {
+    this.reconnectAttempts++;
+    const delay = this.reconnectDelay * Math.min(this.reconnectAttempts, 5);
+    console.log(`Scheduling reconnect attempt ${this.reconnectAttempts} in ${delay}ms`);
+    setTimeout(() => this.connect(), delay);
   }
 
-  subscribe(eventType, handler) {
-    if (!this.messageHandlers.has(eventType)) {
-      this.messageHandlers.set(eventType, new Set());
-    }
-    this.messageHandlers.get(eventType).add(handler);
+  addConnectionListener(listener) {
+    console.log('Adding connection listener');
+    this.connectionListeners.add(listener);
+    // Immediately notify the new listener of current state
+    listener(this.isConnected);
   }
 
-  unsubscribe(eventType, handler) {
-    const handlers = this.messageHandlers.get(eventType);
-    if (handlers) {
-      handlers.delete(handler);
-    }
+  removeConnectionListener(listener) {
+    console.log('Removing connection listener');
+    this.connectionListeners.delete(listener);
   }
 
-  notifyHandlers(type, data) {
-    const handler = this.messageHandlers.get(type);
-    if (handler && typeof handler === 'function') {
-      handler(data);
-    }
+  notifyConnectionChange(connected) {
+    console.log('Notifying connection change:', connected);
+    this.connectionListeners.forEach(listener => {
+      try {
+        listener(connected);
+      } catch (error) {
+        console.error('Error in connection listener:', error);
+      }
+    });
   }
 
-  // Health check
-  async checkHealth() {
-    try {
-      const response = await fetch(`${config.backend.baseUrl}${config.backend.healthEndpoint}`);
-      const data = await response.json();
-      return data.status === 'healthy';
-    } catch (error) {
-      console.error('Health check failed:', error);
-      return false;
-    }
+  addMessageHandler(type, handler) {
+    console.log('Adding message handler for type:', type);
+    this.messageHandlers.set(type, handler);
+  }
+
+  removeMessageHandler(type) {
+    console.log('Removing message handler for type:', type);
+    this.messageHandlers.delete(type);
   }
 }
 
