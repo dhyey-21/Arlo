@@ -10,14 +10,11 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import { authService } from "./services/authService";
-import AnimationTest from './components/AnimationTest';
-import AnimationEffectsTest from "./components/AnimationEffectsTest";
-import MessageTest from './components/MessageTest';
+import TestAnimations from './test/TestAnimations';
 
 // Wrapper component to handle location changes
 const AppContent = () => {
   const [loggedIn, setLoggedIn] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
 
   // Check if user is logged in on component mount
   useEffect(() => {
@@ -29,81 +26,59 @@ const AppContent = () => {
   }, []);
 
   const handleLogout = () => {
-    console.log("Handling logout");
     authService.logout();
     setLoggedIn(false);
-    setIsConnected(false);
-    toast.success("Successfully logged out");
+    toast.info("Logged out successfully");
   };
 
   return (
     <div className="app-container">
-      {loggedIn && (
-        <Navbar handleLogout={handleLogout} isConnected={isConnected} />
-      )}
       <ErrorBoundary>
+        <Navbar loggedIn={loggedIn} onLogout={handleLogout} />
         <Routes>
           <Route
             path="/"
             element={
-              !loggedIn ? (
-                <AuthForm setLoggedIn={setLoggedIn} />
+              loggedIn ? (
+                <MainPage setLoggedIn={setLoggedIn} />
               ) : (
-                <Navigate to="/home" replace />
+                <Navigate to="/login" />
               )
             }
           />
           <Route
             path="/login"
             element={
-              !loggedIn ? (
-                <AuthForm setLoggedIn={setLoggedIn} />
-              ) : (
-                <Navigate to="/home" replace />
-              )
-            }
-          />
-          <Route
-            path="/home"
-            element={
               loggedIn ? (
-                <MainPage setLoggedIn={setLoggedIn} />
+                <Navigate to="/" />
               ) : (
-                <Navigate to="/" replace />
+                <AuthForm setLoggedIn={setLoggedIn} />
               )
             }
           />
-          <Route path="/test" element={<AnimationTest />} />
           <Route
             path="/history"
-            element={loggedIn ? <History /> : <Navigate to="/" replace />}
+            element={
+              loggedIn ? <History /> : <Navigate to="/login" />
+            }
           />
-          <Route path="/effects" element={<AnimationEffectsTest />} />
-          <Route path="/message-test" element={<MessageTest />} />
+          <Route
+            path="/test"
+            element={<TestAnimations />}
+          />
         </Routes>
       </ErrorBoundary>
+      <ToastContainer position="top-right" />
     </div>
   );
 };
 
-function App() {
+const App = () => {
   return (
     <Router>
-      <ToastContainer
-        position="top-right"
-        autoClose={5000}
-        hideProgressBar={false}
-        newestOnTop
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="light"
-      />
       <AppContent />
     </Router>
   );
-}
+};
 
 export default App;

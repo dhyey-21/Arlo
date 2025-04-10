@@ -2,12 +2,14 @@ import React from "react";
 import { NavLink } from "react-router-dom";
 import "../styles/Navbar.css";
 
-const Navbar = ({ handleLogout }) => {
+const Navbar = ({ loggedIn, onLogout }) => {
+  if (!loggedIn) return null;
+
   return (
     <nav className="navbar" role="navigation" aria-label="Main navigation">
       <div className="navbar-left">
         <NavLink
-          to="/home"
+          to="/"
           className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}
           aria-label="Home"
         >
@@ -25,7 +27,7 @@ const Navbar = ({ handleLogout }) => {
       </div>
 
       <div className="navbar-brand">
-        <NavLink to="/home" className="navbar-logo" aria-label="Arlo Home">
+        <NavLink to="/" className="navbar-logo" aria-label="Arlo Home">
           <i className="mdi mdi-robot" aria-hidden="true"></i>
           <span>Arlo</span>
         </NavLink>
@@ -33,7 +35,7 @@ const Navbar = ({ handleLogout }) => {
 
       <div className="navbar-right">
         <button
-          onClick={handleLogout}
+          onClick={onLogout}
           className="nav-link logout-btn"
           aria-label="Logout"
         >

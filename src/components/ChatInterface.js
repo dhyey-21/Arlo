@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 import "../styles/ChatInterface.css";
 
-const ChatInterface = ({ messages, isResponding, isListening }) => {
+const ChatInterface = ({ messages, isResponding, isListening, currentResponse, isTyping }) => {
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -14,31 +14,35 @@ const ChatInterface = ({ messages, isResponding, isListening }) => {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
-  const getMessageClass = (message) => {
-    let classes = `message ${message.type}`;
-    if (message.type === "assistant" && isResponding) {
-      classes += " responding";
-    }
-    return classes;
-  };
+  }, [messages, currentResponse]);
 
   return (
     <div className="chat-interface">
-      <div className={`wave-container ${isListening ? 'active' : ''}`}>
-        <div className="wave wave1"></div>
-        <div className="wave wave2"></div>
-        <div className="wave wave3"></div>
-      </div>
-
       <div className="messages-container">
         {messages.map((message, index) => (
-          <div key={index} className="message-wrapper">
-            <div className={getMessageClass(message)}>
-              {message.text}
+          <div key={index} className={`message-wrapper ${message.type}`}>
+            <div className={`message ${message.type} ${message.type === 'assistant' && isResponding ? 'responding' : ''}`}>
+              <div className="message-content">{message.text}</div>
             </div>
           </div>
         ))}
+        
+        {/* Typing indicator */}
+        {isTyping && (
+          <div className="message-wrapper assistant">
+            <div className="message assistant responding">
+              <div className="message-content">
+                {currentResponse}
+                <span className="typing-indicator">
+                  <span className="dot"></span>
+                  <span className="dot"></span>
+                  <span className="dot"></span>
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+        
         <div ref={messagesEndRef} />
       </div>
     </div>
@@ -54,11 +58,15 @@ ChatInterface.propTypes = {
   ).isRequired,
   isResponding: PropTypes.bool,
   isListening: PropTypes.bool,
+  currentResponse: PropTypes.string,
+  isTyping: PropTypes.bool
 };
 
 ChatInterface.defaultProps = {
   isResponding: false,
   isListening: false,
+  currentResponse: "",
+  isTyping: false
 };
 
 export default ChatInterface;

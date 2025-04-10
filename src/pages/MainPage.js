@@ -1,155 +1,233 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
-import { toast } from "react-toastify";
+import React, { useState, useEffect, useRef } from "react";
 import ChatInterface from "../components/ChatInterface";
-import ConnectionStatus from "../components/ConnectionStatus";
-import { assistantService } from "../services/assistantService";
+import WaveAnimation from "../components/WaveAnimation";
+import ElectricBubble from "../components/ElectricBubble";
 import { websocketService } from "../services/websocketService";
+import historyService from "../services/historyService";
 import "../styles/MainPage.css";
 
-const MainPage = ({ setLoggedIn }) => {
-  const [messages, setMessages] = useState([]);
-  const [isConnected, setIsConnected] = useState(false);
+const MainPage = () => {
+  const [messages, setMessages] = useState([
+    { type: 'assistant', text: 'Hello! Say "HEY ARLO" to Start' }
+  ]);
   const [isListening, setIsListening] = useState(false);
   const [isResponding, setIsResponding] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const lastToastId = useRef(null);
-  const lastConnectionState = useRef(false);
+  const [currentResponse, setCurrentResponse] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const [isWaitingForResponse, setIsWaitingForResponse] = useState(false);
+  const [currentConversation, setCurrentConversation] = useState([]);
+  const responseTimeoutRef = useRef(null);
+  const typingIntervalRef = useRef(null);
 
-  const showToast = useCallback((message, type = 'info') => {
-    // Dismiss previous toast if it exists
-    if (lastToastId.current) {
-      toast.dismiss(lastToastId.current);
-    }
-    lastToastId.current = toast[type](message, {
-      position: "top-right",
-      autoClose: 5000,
-      hideProgressBar: false,
-      closeOnClick: true,
-      pauseOnHover: true,
-      draggable: true,
-      progress: undefined,
-    });
-  }, []);
+  // Debug logging for state changes
+  useEffect(() => {
+    console.log("State changed - isListening:", isListening, "isResponding:", isResponding);
+  }, [isListening, isResponding]);
 
   useEffect(() => {
-    let healthCheckInterval;
-    let isCleanedUp = false;
-
-    const setupConnection = async () => {
-      if (isCleanedUp) return;
+    const messageHandler = (data) => {
+      console.log('Received WebSocket data:', data);
       
-      try {
-        // Initial health check
-        const isHealthy = await assistantService.getStatus();
-        if (!isHealthy) {
-          setIsConnected(false);
-          showToast('Unable to connect to server', 'error');
-          return;
+      // Handle status changes
+      if (data.status) {
+        console.log("Handling status:", data.status);
+        const status = data.status.toLowerCase();
+        switch (status) {
+          case 'listening':
+            setIsListening(true);
+            setIsResponding(false);
+            setIsWaitingForResponse(false);
+            break;
+          case 'responding':
+            setIsListening(false);
+            setIsResponding(false); // Don't show bubble until typing starts
+            setIsWaitingForResponse(true);
+            break;
+          case 'idle':
+            setIsListening(true); // Default to listening in idle state
+            setIsResponding(false);
+            setIsWaitingForResponse(false);
+            break;
+          default:
+            console.log("Unknown status:", data.status);
         }
-
-        // Setup WebSocket
-        websocketService.addConnectionListener((connected) => {
-          setIsConnected(connected);
-          setIsLoading(false);
-          
-          // Only show connection status toast if state has changed
-          if (connected !== lastConnectionState.current) {
-            lastConnectionState.current = connected;
-            if (connected) {
-              showToast('Connected to server', 'success');
-              setIsListening(true); // Start listening when connected
-            } else {
-              showToast('Disconnected from server', 'warning');
-              setIsListening(false); // Stop listening when disconnected
-            }
-          }
-        });
-
-        // Setup message handlers
-        websocketService.addMessageHandler('listening', () => {
-          setIsListening(true);
-          setIsResponding(false);
-        });
-
-        websocketService.addMessageHandler('responding', () => {
-          setIsListening(false);
-          setIsResponding(true);
-        });
-
-        websocketService.addMessageHandler('response_complete', () => {
-          setIsResponding(false);
-          setIsListening(true);
-        });
-
-        // Connect WebSocket
-        websocketService.connect();
-
-        // Setup periodic health checks (every 10 seconds)
-        healthCheckInterval = setInterval(async () => {
-          if (isCleanedUp) return;
-          try {
-            const isHealthy = await assistantService.getStatus();
-            if (!isHealthy && isConnected) {
-              setIsConnected(false);
-              setIsListening(false);
-              // Only show disconnection toast if state has changed
-              if (lastConnectionState.current) {
-                lastConnectionState.current = false;
-                showToast('Lost connection to server', 'error');
-              }
-            }
-          } catch (error) {
-            console.error('Health check failed:', error);
-          }
-        }, 10000);
-
-      } catch (error) {
-        console.error('Setup failed:', error);
-        setIsConnected(false);
-        setIsLoading(false);
+      }
+      
+      if (data.transcript !== undefined) {
+        const userMessage = {
+          type: 'user',
+          text: data.transcript,
+          sender: 'user',
+          timestamp: new Date().toISOString()
+        };
+        
+        setMessages([userMessage]);
+        setCurrentConversation([userMessage]);
+        setIsWaitingForResponse(true);
+        setIsResponding(false);
         setIsListening(false);
-        showToast('Failed to connect to server', 'error');
+      }
+      
+      if (data.response !== undefined) {
+        // Clear any existing timeouts/intervals
+        if (responseTimeoutRef.current) {
+          clearTimeout(responseTimeoutRef.current);
+        }
+        if (typingIntervalRef.current) {
+          clearInterval(typingIntervalRef.current);
+        }
+        
+        setCurrentResponse("");
+        
+        // Show loading indicator immediately when response is received
+        setIsWaitingForResponse(true);
+        setIsResponding(false);
+        setIsListening(false);
+        
+        responseTimeoutRef.current = setTimeout(() => {
+          // Start typing and show bubble animation
+          setIsTyping(true);
+          setIsResponding(true);
+          setIsWaitingForResponse(false);
+          setIsListening(false);
+          
+          const fullResponse = data.response;
+          let currentText = fullResponse.charAt(0);
+          setCurrentResponse(currentText);
+          let index = 1;
+          
+          typingIntervalRef.current = setInterval(() => {
+            if (index < fullResponse.length) {
+              currentText += fullResponse.charAt(index);
+              setCurrentResponse(currentText);
+              index++;
+            } else {
+              clearInterval(typingIntervalRef.current);
+              typingIntervalRef.current = null;
+              setIsTyping(false);
+              setIsWaitingForResponse(false);
+              setIsResponding(false);
+              setIsListening(true);
+              
+              const assistantMessage = {
+                type: 'assistant',
+                text: fullResponse,
+                sender: 'assistant',
+                timestamp: new Date().toISOString()
+              };
+              
+              setMessages(prev => [...prev, assistantMessage]);
+              
+              // Update conversation history without duplication
+              setCurrentConversation(prev => {
+                const newConversation = [...prev, assistantMessage];
+                // Only save to history if it's a new conversation
+                if (prev.length === 1 && prev[0].type === 'user') {
+                  historyService.addConversation(newConversation);
+                }
+                return newConversation;
+              });
+            }
+          }, 50);
+        }, 5000);
       }
     };
 
-    setupConnection();
+    websocketService.setMessageHandler(messageHandler);
 
     return () => {
-      isCleanedUp = true;
-      if (healthCheckInterval) {
-        clearInterval(healthCheckInterval);
+      if (responseTimeoutRef.current) {
+        clearTimeout(responseTimeoutRef.current);
       }
-      if (lastToastId.current) {
-        toast.dismiss(lastToastId.current);
+      if (typingIntervalRef.current) {
+        clearInterval(typingIntervalRef.current);
       }
-      websocketService.disconnect();
     };
-  }, [showToast]);
+  }, []);
 
   return (
     <div className="main-page">
-      <nav className="nav-bar">
-        <ConnectionStatus 
-          isConnected={isConnected}
-          isListening={isListening}
-          isLoading={isLoading}
-        />
-      </nav>
-      <div className="chat-container">
+      {/* Wave animation component */}
+      <WaveAnimation isActive={isListening} />
+      
+      {/* Electric bubble component */}
+      <ElectricBubble isActive={isResponding} />
+
+      {/* Status text indicators */}
+      <div 
+        style={{
+          position: 'fixed',
+          top: '80px', 
+          right: '20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.5rem',
+          zIndex: 998
+        }}
+      >
+        {isListening && (
+          <div 
+            style={{
+              padding: '0.6rem 1.2rem',
+              background: 'rgba(0, 0, 0, 0.7)',
+              color: '#00ff9d',
+              borderRadius: '20px',
+              fontSize: '0.9rem',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(0, 255, 157, 0.2)',
+              boxShadow: '0 0 15px rgba(0, 255, 157, 0.1)',
+              animation: 'pulse 1.5s infinite'
+            }}
+          >
+            Listening...
+          </div>
+        )}
+        {isResponding && (
+          <div 
+            style={{
+              padding: '0.6rem 1.2rem',
+              background: 'rgba(0, 0, 0, 0.7)',
+              color: '#00ff9d',
+              borderRadius: '20px',
+              fontSize: '0.9rem',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(0, 255, 157, 0.2)',
+              boxShadow: '0 0 15px rgba(0, 255, 157, 0.1)',
+              animation: 'pulse 1.5s infinite'
+            }}
+          >
+            Speaking...
+          </div>
+        )}
+        {isWaitingForResponse && !isResponding && (
+          <div 
+            style={{
+              padding: '0.6rem 1.2rem',
+              background: 'rgba(0, 0, 0, 0.7)',
+              color: '#00ff9d',
+              borderRadius: '20px',
+              fontSize: '0.9rem',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(0, 255, 157, 0.2)',
+              boxShadow: '0 0 15px rgba(0, 255, 157, 0.1)',
+              animation: 'pulse 1.5s infinite'
+            }}
+          >
+            Processing...
+          </div>
+        )}
+      </div>
+
+      <div className="chat-container" style={{ marginTop: '80px' }}> {/* Increased margin to accommodate lowered status indicators */}
         <ChatInterface 
-          messages={messages} 
+          messages={messages}
           isListening={isListening}
           isResponding={isResponding}
+          currentResponse={currentResponse}
+          isTyping={isTyping}
+          isWaitingForResponse={isWaitingForResponse}
         />
       </div>
-      {isListening && (
-        <div className={`wave-container ${isListening ? 'active' : ''}`}>
-          <div className="wave wave1"></div>
-          <div className="wave wave2"></div>
-          <div className="wave wave3"></div>
-        </div>
-      )}
-      <div className={`electric-bubble ${isResponding && !isListening ? 'active' : ''}`}></div>
     </div>
   );
 };
