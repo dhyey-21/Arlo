@@ -7,22 +7,51 @@ import historyService from "../services/historyService";
 import "../styles/MainPage.css";
 
 const MainPage = () => {
-  const [messages, setMessages] = useState([
-    { type: 'assistant', text: 'Hello! Say "HEY ARLO" to Start' }
-  ]);
-  const [isListening, setIsListening] = useState(false);
+  const [messages, setMessages] = useState(() => {
+    const savedMessages = sessionStorage.getItem('arloMessages');
+    return savedMessages ? JSON.parse(savedMessages) : [
+      { type: 'assistant', text: 'Hello! Say "HEY ARLO" to Start' }
+    ];
+  });
+  const [isListening, setIsListening] = useState(() => {
+    return sessionStorage.getItem('arloListening') === 'true';
+  });
   const [isResponding, setIsResponding] = useState(false);
   const [currentResponse, setCurrentResponse] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [isWaitingForResponse, setIsWaitingForResponse] = useState(false);
-  const [currentConversation, setCurrentConversation] = useState([]);
+  const [currentConversation, setCurrentConversation] = useState(() => {
+    const savedConversation = sessionStorage.getItem('arloConversation');
+    return savedConversation ? JSON.parse(savedConversation) : [];
+  });
   const responseTimeoutRef = useRef(null);
   const typingIntervalRef = useRef(null);
+  const conversationIdRef = useRef(Date.now());
 
   // Debug logging for state changes
   useEffect(() => {
     console.log("State changed - isListening:", isListening, "isResponding:", isResponding);
   }, [isListening, isResponding]);
+
+  // Save state to sessionStorage when it changes
+  useEffect(() => {
+    sessionStorage.setItem('arloMessages', JSON.stringify(messages));
+  }, [messages]);
+
+  useEffect(() => {
+    sessionStorage.setItem('arloListening', isListening);
+  }, [isListening]);
+
+  useEffect(() => {
+    sessionStorage.setItem('arloConversation', JSON.stringify(currentConversation));
+  }, [currentConversation]);
+
+  // Set initial listening state when component mounts
+  useEffect(() => {
+    if (!isListening && !isResponding && !isWaitingForResponse) {
+      setIsListening(true);
+    }
+  }, []);
 
   useEffect(() => {
     const messageHandler = (data) => {
@@ -58,7 +87,8 @@ const MainPage = () => {
           type: 'user',
           text: data.transcript,
           sender: 'user',
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          conversationId: conversationIdRef.current
         };
         
         setMessages([userMessage]);
@@ -113,7 +143,8 @@ const MainPage = () => {
                 type: 'assistant',
                 text: fullResponse,
                 sender: 'assistant',
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                conversationId: conversationIdRef.current
               };
               
               setMessages(prev => [...prev, assistantMessage]);
@@ -121,15 +152,19 @@ const MainPage = () => {
               // Update conversation history without duplication
               setCurrentConversation(prev => {
                 const newConversation = [...prev, assistantMessage];
-                // Only save to history if it's a new conversation
-                if (prev.length === 1 && prev[0].type === 'user') {
+                // Only save to history if this is a complete conversation
+                if (prev.length === 1 && 
+                    prev[0].type === 'user' && 
+                    prev[0].conversationId === conversationIdRef.current) {
                   historyService.addConversation(newConversation);
+                  // Generate new conversation ID for next conversation
+                  conversationIdRef.current = Date.now();
                 }
                 return newConversation;
               });
             }
           }, 50);
-        }, 5000);
+        }, 3000);
       }
     };
 
