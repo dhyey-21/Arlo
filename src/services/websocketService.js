@@ -2,13 +2,26 @@ class WebSocketService {
   constructor() {
     this.ws = null;
     this.onMessage = null;
+    this.onConnectionChange = null;
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = 5;
     this.reconnectDelay = 3000;
     this.isConnected = false;
     this.isReconnecting = false;
     this.lastError = null;
+    this.pingInterval = null;
+    
+    // Store connection state in localStorage
+    this.connectionState = localStorage.getItem('wsConnectionState') || 'disconnected';
     this.connect();
+  }
+
+  setConnectionState(state) {
+    this.connectionState = state;
+    localStorage.setItem('wsConnectionState', state);
+    if (this.onConnectionChange) {
+      this.onConnectionChange(state);
+    }
   }
 
   connect() {
@@ -25,6 +38,8 @@ class WebSocketService {
       this.isConnected = true;
       this.reconnectAttempts = 0;
       this.lastError = null;
+      this.setConnectionState('connected');
+      
       if (this.onMessage) {
         this.onMessage({ status: 'connected' });
       }
@@ -35,37 +50,40 @@ class WebSocketService {
         const data = JSON.parse(event.data);
         console.log('WebSocket message received:', data);
         
-        // Enhanced status handling
-        let enhancedData = { ...data };
-        
-        // If we receive a transcript, we're in responding state
-        if (data.transcript !== undefined) {
-          enhancedData.status = 'responding';
-        }
-        
-        // If we receive a response, we go back to listening
-        if (data.response !== undefined) {
-          // First send responding status
-          if (this.onMessage) {
-            this.onMessage({ ...data, status: 'responding' });
+        // Only process messages when connected
+        if (this.connectionState === 'connected') {
+          // Enhanced status handling
+          let enhancedData = { ...data };
+          
+          // If we receive a transcript, we're in responding state
+          if (data.transcript !== undefined) {
+            enhancedData.status = 'responding';
           }
-          // Then after a short delay, send the response
-          setTimeout(() => {
+          
+          // If we receive a response, we go back to listening
+          if (data.response !== undefined) {
+            // First send responding status
             if (this.onMessage) {
-              this.onMessage({ ...data, status: 'listening' });
+              this.onMessage({ ...data, status: 'responding' });
             }
-          }, 100);
-          return;
-        }
-        
-        // Ensure status is always present
-        if (!enhancedData.status) {
-          enhancedData.status = 'idle';
-        }
-        
-        // Emit the message event for subscribers
-        if (this.onMessage) {
-          this.onMessage(enhancedData);
+            // Then after a short delay, send the response
+            setTimeout(() => {
+              if (this.onMessage) {
+                this.onMessage({ ...data, status: 'listening' });
+              }
+            }, 100);
+            return;
+          }
+          
+          // Ensure status is always present
+          if (!enhancedData.status) {
+            enhancedData.status = 'idle';
+          }
+          
+          // Emit the message event for subscribers
+          if (this.onMessage) {
+            this.onMessage(enhancedData);
+          }
         }
       } catch (error) {
         console.error('Error parsing WebSocket message:', error);
@@ -83,6 +101,7 @@ class WebSocketService {
     this.ws.onerror = (error) => {
       console.error('WebSocket error:', error);
       this.lastError = error;
+      this.setConnectionState('disconnected');
       if (this.onMessage) {
         this.onMessage({ 
           status: 'error', 
@@ -98,6 +117,7 @@ class WebSocketService {
       
       // Don't reconnect if connection was closed intentionally
       if (event.code === 1000) {
+        this.setConnectionState('disconnected');
         if (this.onMessage) {
           this.onMessage({ status: 'disconnected' });
         }
@@ -107,6 +127,7 @@ class WebSocketService {
       // Handle reconnection logic
       if (this.reconnectAttempts < this.maxReconnectAttempts) {
         this.isReconnecting = true;
+        this.setConnectionState('reconnecting');
         if (this.onMessage) {
           this.onMessage({ 
             status: 'reconnecting',
@@ -121,6 +142,7 @@ class WebSocketService {
         
         this.reconnectAttempts++;
       } else {
+        this.setConnectionState('disconnected');
         if (this.onMessage) {
           this.onMessage({ 
             status: 'disconnected',
@@ -146,18 +168,24 @@ class WebSocketService {
     this.isConnected = false;
     this.isReconnecting = false;
     this.reconnectAttempts = 0;
+    this.setConnectionState('disconnected');
   }
 
   setMessageHandler(handler) {
     this.onMessage = handler;
   }
 
-  getStatus() {
+  setConnectionChangeHandler(handler) {
+    this.onConnectionChange = handler;
+  }
+
+  getConnectionState() {
     return {
       isConnected: this.isConnected,
       isReconnecting: this.isReconnecting,
       lastError: this.lastError,
-      reconnectAttempts: this.reconnectAttempts
+      reconnectAttempts: this.reconnectAttempts,
+      connectionState: this.connectionState
     };
   }
 

@@ -27,36 +27,99 @@ const MainPage = () => {
   const responseTimeoutRef = useRef(null);
   const typingIntervalRef = useRef(null);
   const conversationIdRef = useRef(Date.now());
+  const [connectionState, setConnectionState] = useState(() => {
+    return localStorage.getItem('wsConnectionState') || 'disconnected';
+  });
 
-  // Debug logging for state changes
+  // Clear session storage when component unmounts
   useEffect(() => {
-    console.log("State changed - isListening:", isListening, "isResponding:", isResponding);
-  }, [isListening, isResponding]);
+    return () => {
+      sessionStorage.removeItem('arloMessages');
+      sessionStorage.removeItem('arloListening');
+      sessionStorage.removeItem('arloConversation');
+    };
+  }, []);
+
+  // Clear messages when window is unloaded (refresh/close)
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      sessionStorage.removeItem('arloMessages');
+      sessionStorage.removeItem('arloListening');
+      sessionStorage.removeItem('arloConversation');
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
+
+  // Handle connection state changes
+  useEffect(() => {
+    websocketService.setConnectionChangeHandler(setConnectionState);
+
+    // Clear all states when disconnected
+    const handleConnectionChange = (newState) => {
+      if (newState !== 'connected') {
+        // Clear all active states
+        setIsListening(false);
+        setIsResponding(false);
+        setIsTyping(false);
+        setIsWaitingForResponse(false);
+        setCurrentResponse("");
+        setMessages([]);
+        setCurrentConversation([]);
+        
+        // Clear timeouts and intervals
+        if (responseTimeoutRef.current) {
+          clearTimeout(responseTimeoutRef.current);
+        }
+        if (typingIntervalRef.current) {
+          clearInterval(typingIntervalRef.current);
+        }
+      }
+    };
+
+    // Initial connection state check
+    handleConnectionChange(connectionState);
+    return () => {
+      websocketService.setConnectionChangeHandler(null);
+    };
+  }, []);
 
   // Save state to sessionStorage when it changes
   useEffect(() => {
-    sessionStorage.setItem('arloMessages', JSON.stringify(messages));
-  }, [messages]);
+    if (connectionState === 'connected') {
+      sessionStorage.setItem('arloMessages', JSON.stringify(messages));
+    }
+  }, [messages, connectionState]);
 
   useEffect(() => {
-    sessionStorage.setItem('arloListening', isListening);
-  }, [isListening]);
+    if (connectionState === 'connected') {
+      sessionStorage.setItem('arloListening', isListening);
+    }
+  }, [isListening, connectionState]);
 
   useEffect(() => {
-    sessionStorage.setItem('arloConversation', JSON.stringify(currentConversation));
-  }, [currentConversation]);
+    if (connectionState === 'connected') {
+      sessionStorage.setItem('arloConversation', JSON.stringify(currentConversation));
+    }
+  }, [currentConversation, connectionState]);
 
-  // Set initial listening state when component mounts
+  // Set initial listening state when component mounts and connected
   useEffect(() => {
-    if (!isListening && !isResponding && !isWaitingForResponse) {
+    if (connectionState === 'connected' && !isListening && !isResponding && !isWaitingForResponse) {
       setIsListening(true);
     }
-  }, []);
+  }, [connectionState]);
 
   useEffect(() => {
     const messageHandler = (data) => {
       console.log('Received WebSocket data:', data);
       
+      // Only process messages when connected
+      if (connectionState !== 'connected') return;
+
       // Handle status changes
       if (data.status) {
         console.log("Handling status:", data.status);
@@ -164,13 +227,14 @@ const MainPage = () => {
               });
             }
           }, 50);
-        }, 3000);
+        }, 2500);
       }
     };
 
     websocketService.setMessageHandler(messageHandler);
 
     return () => {
+      websocketService.setMessageHandler(null);
       if (responseTimeoutRef.current) {
         clearTimeout(responseTimeoutRef.current);
       }
@@ -178,29 +242,75 @@ const MainPage = () => {
         clearInterval(typingIntervalRef.current);
       }
     };
-  }, []);
+  }, [connectionState]);
 
   return (
     <div className="main-page">
+      {/* Connection status indicator */}
+      {connectionState !== 'connected' && (
+        <div 
+          className="connection-indicator"
+          style={{
+            position: 'fixed',
+            top: '80px',
+            right: '15px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '8px 16px',
+            borderRadius: '25px',
+            background: 'rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
+            zIndex: 9999,
+            animation: 'fade-in 0.3s ease-in-out'
+          }}
+        >
+          <div className="status-dot" style={{
+            width: '10px',
+            height: '10px',
+            borderRadius: '50%',
+            background: connectionState === 'reconnecting' ? '#FFA500' : '#FF4444',
+            animation: connectionState === 'reconnecting' ? 'pulse 1.5s infinite' : 'none'
+          }}></div>
+          <span style={{
+            color: 'white',
+            fontSize: '14px',
+            fontWeight: 500,
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px'
+          }}>
+            {connectionState === 'disconnected' ? 'Disconnected' : 
+             connectionState === 'reconnecting' ? 'Reconnecting...' : 
+             'Connection Error'}
+          </span>
+        </div>
+      )}
+
       {/* Wave animation component */}
-      <WaveAnimation isActive={isListening} />
+      {connectionState === 'connected' && (
+        <WaveAnimation isActive={isListening} />
+      )}
       
       {/* Electric bubble component */}
-      <ElectricBubble isActive={isResponding} />
+      {connectionState === 'connected' && (
+        <ElectricBubble isActive={isResponding} />
+      )}
 
       {/* Status text indicators */}
       <div 
         style={{
           position: 'fixed',
-          top: '80px', 
-          right: '20px',
+          top: '80px',
+          right: '30px',
           display: 'flex',
           flexDirection: 'column',
           gap: '0.5rem',
           zIndex: 998
         }}
       >
-        {isListening && (
+        {connectionState === 'connected' && isListening && (
           <div 
             style={{
               padding: '0.6rem 1.2rem',
@@ -217,7 +327,7 @@ const MainPage = () => {
             Listening...
           </div>
         )}
-        {isResponding && (
+        {connectionState === 'connected' && isResponding && (
           <div 
             style={{
               padding: '0.6rem 1.2rem',
@@ -234,7 +344,7 @@ const MainPage = () => {
             Speaking...
           </div>
         )}
-        {isWaitingForResponse && !isResponding && (
+        {connectionState === 'connected' && isWaitingForResponse && !isResponding && (
           <div 
             style={{
               padding: '0.6rem 1.2rem',
@@ -253,15 +363,17 @@ const MainPage = () => {
         )}
       </div>
 
-      <div className="chat-container" style={{ marginTop: '80px' }}> {/* Increased margin to accommodate lowered status indicators */}
-        <ChatInterface 
-          messages={messages}
-          isListening={isListening}
-          isResponding={isResponding}
-          currentResponse={currentResponse}
-          isTyping={isTyping}
-          isWaitingForResponse={isWaitingForResponse}
-        />
+      <div className="chat-container" style={{ marginTop: '80px' }}>
+        {connectionState === 'connected' && (
+          <ChatInterface 
+            messages={messages}
+            isListening={isListening}
+            isResponding={isResponding}
+            currentResponse={currentResponse}
+            isTyping={isTyping}
+            isWaitingForResponse={isWaitingForResponse}
+          />
+        )}
       </div>
     </div>
   );

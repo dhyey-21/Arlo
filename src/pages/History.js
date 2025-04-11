@@ -184,7 +184,7 @@ const History = () => {
                             }`}
                           ></i>
                           <span className="message-sender">
-                            {message.sender}
+                            {message.type === "user" ? "You" : "Arlo"}
                           </span>
                         </div>
                         <div className="message-text">{message.text}</div>
